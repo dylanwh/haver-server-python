@@ -34,7 +34,6 @@ class Ghost(Entity):
 class Avatar(Entity):
 	def __init__(self, name, talker):
 		Entity.__init__(self, name)
-		
 		self.talker        = talker
 
 	def sendMsg(self, *msg):
@@ -49,39 +48,19 @@ class User(Avatar):
 		self.lastActivity = int(time.time())
 		self.groups     = set()
 
-	def joinGroup(self, group):
-		name = group.name.lower()
+	def join(self, name):
+		name = name.lower()
 		if name in self.groups:
-			raise Fail('already.joined', group.name)
+			raise Fail('already.joined', name)
 		else:
 			self.groups.add(name)
-			group.add(self)
 			
-	def partGroup(self, group):
-		name = group.name.lower()
+	def part(self, name):
+		name = name.lower()
 		if name in self.groups:
 			self.groups.remove(name)
-			group.remove('user', self.name)
 		else:
-			raise Fail('already.parted', group.name)
-
-	def quit(self, lobby):
-		groups = []
-		for name in list(self.groups):
-			group = lobby.lookup('group', name)
-			self.partGroup(group)
-			groups.append(group)
-
-		return groups
-			
-	def updateIdle(self):
-		self.lastActivity = int(time.time())
-
-	def getIdle(self):
-		return int(time.time()) - self.lastActivity
-	
-	idle  = property(getIdle)
-	
+			raise Fail('already.parted', name)
 
 class Group(Entity):
 	namespace = 'group'
@@ -118,10 +97,11 @@ class Group(Entity):
 			raise Fail('exists.%s' % ns, entity.name)
 		ents[name] = entity
 		
-	def remove(self, ns, name):
-		assert_name(name)
+	def remove(self, ent):
+		ns    = ent.namespace
+		name  = ent.name
 		lname = name.lower()
-		ents = self._get_ns(ns)
+		ents  = self._get_ns(ns)
 		try:
 			del ents[lname]
 		except KeyError:

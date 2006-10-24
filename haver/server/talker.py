@@ -130,3 +130,24 @@ class HaverTalker(LineOnlyReceiver):
 	def TO(self, target, kind, msg, *rest):
 		lobby = self.factory.lobby
 		lobby.lookup('user', target).sendMsg('FROM', self.user.name, kind, msg, *rest)
+
+	@state('normal')
+	def IN(self, name, kind, msg, *rest):
+		lobby = self.factory.lobby
+		lobby.lookup('group', name).sendMsg('IN', name, self.user.name, kind, msg, *rest)
+
+	@state('normal')
+	def JOIN(self, name):
+		lobby = self.factory.lobby
+		group = lobby.lookup('group', name)
+		self.user.join(name)
+		group.add(self.user)
+		group.sendMsg('JOIN', name, self.user.name)
+
+	@state('normal')
+	def PART(self, name):
+		lobby = self.factory.lobby
+		group = lobby.lookup('group', name)
+		self.user.part(name)
+		group.sendMsg('PART', name, self.user.name)
+		group.remove(self.user)
