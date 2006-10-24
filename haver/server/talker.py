@@ -122,10 +122,11 @@ class HaverTalker(LineOnlyReceiver):
 			user = User(name, self)
 			lobby.add(user)
 			self.sendMsg('HELLO', name, str(self.addr.host))
+			self.user = user
 			return 'normal'
 
 
 	@state('normal')
-	def TO(self, target, kind, *rest):
-		pass
-
+	def TO(self, target, kind, msg, *rest):
+		lobby = self.factory.lobby
+		lobby.lookup('user', target).sendMsg('FROM', self.user.name, kind, msg, *rest)
