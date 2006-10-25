@@ -133,6 +133,20 @@ class HaverTalker(LineOnlyReceiver):
 			lobby.remove(self.user)
 			self.state = 'quit'
 
+	def checkPing(self):
+		"""Called every once and a while. Issues a ping if this client hasn't sent a command recently"""
+		now      = time()
+		duration = int (now - self.lastCmd)
+		if self.tardy is not None:
+			self.sendMsg('BYE', 'ping')
+			self.transport.loseConnection()
+			self.quit('ping')
+			return
+
+		if duration > self.pingTime:
+			self.sendMsg('PING', 'foo')
+			self.tardy = 'foo'
+	
 
 	@state('connect')
 	def HAVER(self, version, supports = '', *rest):
@@ -189,20 +203,6 @@ class HaverTalker(LineOnlyReceiver):
 		self.transport.loseConnection()
 		self.quit('bye', detail)
 
-	def checkPing(self):
-		"""Called every once and a while. Issues a ping if this client hasn't sent a command recently"""
-		now      = time()
-		duration = int (now - self.lastCmd)
-		if self.tardy is not None:
-			self.sendMsg('BYE', 'ping')
-			self.transport.loseConnection()
-			self.quit('ping')
-			return
-
-		if duration > self.pingTime:
-			self.sendMsg('PING', 'foo')
-			self.tardy = 'foo'
-	
 	@state('normal')
 	def PONG(self, nonce):
 		if self.tardy is None:
@@ -210,6 +210,7 @@ class HaverTalker(LineOnlyReceiver):
 		else:
 			self.tardy = None
 
-
-
+	@state('normal')
+	def POKE(self, nonce):
+		self.sendMsg('OUCH', nonce)
 	
