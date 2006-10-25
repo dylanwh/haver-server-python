@@ -46,30 +46,30 @@ class User(Avatar):
 		Avatar.__init__(self, *args, **kwargs)
 		self.email        = None
 		self.lastActivity = int(time.time())
-		self.groups     = set()
+		self.rooms     = set()
 
 	def join(self, name):
 		name = name.lower()
-		if name in self.groups:
+		if name in self.rooms:
 			raise Fail('already.joined', name)
 		else:
-			self.groups.add(name)
+			self.rooms.add(name)
 			
 	def part(self, name):
 		name = name.lower()
-		if name in self.groups:
-			self.groups.remove(name)
+		if name in self.rooms:
+			self.rooms.remove(name)
 		else:
 			raise Fail('already.parted', name)
 
-class Group(Entity):
-	namespace = 'group'
+class Room(Entity):
+	namespace = 'room'
 
 	def __init__(self, name, owner = '&root'):
 		Entity.__init__(self, name)
 		self.owner = owner
 		self.__users = dict()
-		self.__members = dict(user = {}, group = {}, ghost = {})
+		self.__members = dict(user = {}, room = {}, ghost = {})
 		
 	def sendMsg(self, *msg):
 		for user in self.members('user'):
@@ -111,13 +111,13 @@ class Group(Entity):
 		ents = self._get_ns(ns)
 		return ents.values()
 
-class Lobby(Group):
+class Lobby(Room):
 	namespace = 'lobby'
 	def __init__(self):
-		Group.__init__(self, '&lobby')
+		Room.__init__(self, '&lobby')
 
 	def lookup(self, ns, name):
 		if name == '&lobby':
 			return self
 		else:
-			return Group.lookup(self, ns, name)
+			return Room.lookup(self, ns, name)

@@ -8,7 +8,7 @@ from twisted.internet          import reactor
 from twisted.internet          import task
 
 from haver.server.errors import Fail, Bork
-from haver.server.entity import User, Group, Ghost
+from haver.server.entity import User, Room, Ghost
 
 
 def state(state):
@@ -122,13 +122,13 @@ class HaverTalker(LineOnlyReceiver):
 		lobby = self.factory.lobby
 		
 		if self.state == 'normal':
-			for name in self.user.groups:
-				group = lobby.lookup('group', name)
-				group.remove(self.user)
+			for name in self.user.rooms:
+				room = lobby.lookup('room', name)
+				room.remove(self.user)
 				if reason is None:
-					group.sendMsg('QUIT', self.user.name, why)
+					room.sendMsg('QUIT', self.user.name, why)
 				else:
-					group.sendMsg('QUIT', self.user.name, why, reason)
+					room.sendMsg('QUIT', self.user.name, why, reason)
 
 			lobby.remove(self.user)
 			self.state = 'quit'
@@ -179,23 +179,23 @@ class HaverTalker(LineOnlyReceiver):
 	@state('normal')
 	def IN(self, name, kind, msg, *rest):
 		lobby = self.factory.lobby
-		lobby.lookup('group', name).sendMsg('IN', name, self.user.name, kind, msg, *rest)
+		lobby.lookup('room', name).sendMsg('IN', name, self.user.name, kind, msg, *rest)
 
 	@state('normal')
 	def JOIN(self, name):
 		lobby = self.factory.lobby
-		group = lobby.lookup('group', name)
+		room = lobby.lookup('room', name)
 		self.user.join(name)
-		group.add(self.user)
-		group.sendMsg('JOIN', name, self.user.name)
+		room.add(self.user)
+		room.sendMsg('JOIN', name, self.user.name)
 
 	@state('normal')
 	def PART(self, name):
 		lobby = self.factory.lobby
-		group = lobby.lookup('group', name)
+		room = lobby.lookup('room', name)
 		self.user.part(name)
-		group.sendMsg('PART', name, self.user.name)
-		group.remove(self.user)
+		room.sendMsg('PART', name, self.user.name)
+		room.remove(self.user)
 
 	@state('normal')
 	def BYE(self, detail = None):
@@ -213,4 +213,5 @@ class HaverTalker(LineOnlyReceiver):
 	@state('normal')
 	def POKE(self, nonce):
 		self.sendMsg('OUCH', nonce)
-	
+
+

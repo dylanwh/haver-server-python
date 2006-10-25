@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 from haver.server.talker import HaverFactory, HaverTalker
-from haver.server.entity import Lobby, Group
+from haver.server.entity import Lobby, Room
 from twisted.application import service, internet
 from twisted.persisted   import sob
 
@@ -12,7 +12,7 @@ applicationper = sob.IPersistable(application)
 
 
 lobby   = Lobby()
-main    = Group('main')
+main    = Room('main')
 lobby.add(main)
 factory = HaverFactory(lobby)
 factory.hostname = 'localhost'
