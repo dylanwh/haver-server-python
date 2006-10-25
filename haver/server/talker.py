@@ -90,6 +90,7 @@ class HaverTalker(LineOnlyReceiver):
 			if self.state != 'connect':
 				self.sendMsg('BORK', bork.msg)
 			self.transport.loseConnection()
+			self.quit('bork')
 
 
 	def sendMsg(self, *msg):
