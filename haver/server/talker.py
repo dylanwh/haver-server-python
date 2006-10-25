@@ -3,6 +3,7 @@ import re
 from twisted.python import log
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.internet.protocol import Factory
+from twisted.internet          import reactor
 from haver.server.errors import Fail, Bork
 from haver.server.entity import User, Group, Ghost
 
@@ -41,10 +42,11 @@ class HaverFactory(Factory):
 		
 class HaverTalker(LineOnlyReceiver):
 	def __init__(self, addr):
-		self.addr = addr
-		self.cmdpat = re.compile('^[A-Z][A-Z:_-]+$')
+		self.addr      = addr
+		self.cmdpat    = re.compile('^[A-Z][A-Z:_-]+$')
 		self.delimiter = "\n"
-		self.state = 'none'
+		self.state     = 'none'
+		self.ping      = None
 
 	def parseLine(self, line):
 		if len(line) == 0:
@@ -120,6 +122,7 @@ class HaverTalker(LineOnlyReceiver):
 			lobby.remove(self.user)
 			self.state = 'quit'
 
+
 	@state('connect')
 	def HAVER(self, version, supports = '', *rest):
 		self.version = version
@@ -173,3 +176,17 @@ class HaverTalker(LineOnlyReceiver):
 	def BYE(self, detail = None):
 		self.transport.loseConnection()
 		self.quit('bye', detail)
+
+	
+	def sendPing(self):
+		nonce = 'msg'
+		self.sendMsg('PING', nonce)
+		self.ping          = dict()
+		self.ping['id']    = reactor.callLater(60, lambda: self.quit('ping'))
+		self.ping['nonce'] = nonce
+
+	@state('normal')
+	def PONG(self, nonce):
+
+
+	
