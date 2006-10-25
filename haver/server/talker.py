@@ -1,11 +1,15 @@
 import re
 
-from twisted.python import log
-from twisted.protocols.basic import LineOnlyReceiver
+from time import time
+from twisted.python            import log
+from twisted.protocols.basic   import LineOnlyReceiver
 from twisted.internet.protocol import Factory
 from twisted.internet          import reactor
+from twisted.internet          import task
+
 from haver.server.errors import Fail, Bork
 from haver.server.entity import User, Group, Ghost
+
 
 def state(state):
 	def code(func):
@@ -14,7 +18,7 @@ def state(state):
 	return code
 
 def is_arity_error(f, e):
-	pat = re.compile("^" + f.func_name + '\(\) takes at least (\d+) arguments \((\d+) given\)')
+	pat = re.compile("^" + f.func_name + '\(\) takes (at least|exactly) (\d+) arguments \((\d+) given\)')
 	return pat.match(e.args[0])
 
 
@@ -25,7 +29,7 @@ def catch_arity(f, args):
 		fix = lambda s: str(int(s) - 1)
 		m = is_arity_error(f, e)
 		if m:
-			raise Fail('arity', fix(m.group(1)), fix(m.group(2)))
+			raise Fail('arity', m.group(1), fix(m.group(2)), fix(m.group(3)))
 		else:
 			raise e
 
@@ -46,7 +50,13 @@ class HaverTalker(LineOnlyReceiver):
 		self.cmdpat    = re.compile('^[A-Z][A-Z:_-]+$')
 		self.delimiter = "\n"
 		self.state     = 'none'
-		self.ping      = None
+
+
+		self.lastCmd   = time()
+		self.tardy     = None
+		self.pingTime  = 6
+		self.pingLoop  = task.LoopingCall(self.checkPing)
+		self.pingLoop.start(self.pingTime)
 
 	def parseLine(self, line):
 		if len(line) == 0:
@@ -66,6 +76,7 @@ class HaverTalker(LineOnlyReceiver):
 		try:
 			cmd, args = self.parseLine(line)
 			self.cmd = cmd
+			self.lastCmd = time()
 
 			if hasattr(self, cmd):
 				f = getattr(self, cmd)
@@ -174,19 +185,31 @@ class HaverTalker(LineOnlyReceiver):
 
 	@state('normal')
 	def BYE(self, detail = None):
+		self.sendMsg('BYE', 'bye')
 		self.transport.loseConnection()
 		self.quit('bye', detail)
 
-	
-	def sendPing(self):
-		nonce = 'msg'
-		self.sendMsg('PING', nonce)
-		self.ping          = dict()
-		self.ping['id']    = reactor.callLater(60, lambda: self.quit('ping'))
-		self.ping['nonce'] = nonce
+	def checkPing(self):
+		"""Called every once and a while. Issues a ping if this client hasn't sent a command recently"""
+		now      = time()
+		duration = int (now - self.lastCmd)
+		if self.tardy is not None:
+			self.sendMsg('BYE', 'ping')
+			self.transport.loseConnection()
+			self.quit('ping')
+			return
 
+		if duration > self.pingTime:
+			self.sendMsg('PING', 'foo')
+			self.tardy = 'foo'
+	
 	@state('normal')
 	def PONG(self, nonce):
+		if self.tardy is None:
+			raise Bork('You smell like SPAM!')
+		else:
+			self.tardy = None
+
 
 
 	
