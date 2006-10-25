@@ -167,4 +167,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.user.part(name)
 		group.sendMsg('PART', name, self.user.name)
 		group.remove(self.user)
-	
+
+	@state('normal')
+	def BYE(self, detail = None):
+		self.quit('bye', detail)
