@@ -35,13 +35,13 @@ def catch_arity(f, args):
 
 class HaverFactory(Factory):
 
-	def __init__(self, lobby):
-		self.lobby = lobby
+	def __init__(self, house):
+		self.house = house
 
 	def buildProtocol(self, addr):
 		p = self.protocol(addr)
 		p.factory = self
-		p.lobby   = self.lobby
+		p.house   = self.house
 		return p
 		
 class HaverTalker(LineOnlyReceiver):
@@ -119,18 +119,18 @@ class HaverTalker(LineOnlyReceiver):
 		self.quit('closed')
 
 	def quit(self, why, reason = None):
-		lobby = self.factory.lobby
+		house = self.factory.house
 		
 		if self.state == 'normal':
 			for name in self.user.rooms:
-				room = lobby.lookup('room', name)
+				room = house.lookup('room', name)
 				room.remove(self.user)
 				if reason is None:
 					room.sendMsg('QUIT', self.user.name, why)
 				else:
 					room.sendMsg('QUIT', self.user.name, why, reason)
 
-			lobby.remove(self.user)
+			house.remove(self.user)
 			self.state = 'quit'
 
 	def checkPing(self):
@@ -162,15 +162,15 @@ class HaverTalker(LineOnlyReceiver):
 
 	@state('login')
 	def IDENT(self, name, *rest):
-		lobby = self.factory.lobby
+		house = self.factory.house
 		try:
-			ghost = lobby.lookup('ghost', name)
+			ghost = house.lookup('ghost', name)
 			self.ghost = ghost
 			self.sendMsg('AUTH:TYPES', 'AUTH:BASIC')
 		except Fail, fail:
 			if fail.name != 'unknown.ghost': raise fail
 			user = User(name, self)
-			lobby.add(user)
+			house.add(user)
 			self.sendMsg('HELLO', name, str(self.addr.host))
 			self.user = user
 			user.info['address'] = str(self.addr.host)
@@ -183,27 +183,27 @@ class HaverTalker(LineOnlyReceiver):
 	@state('normal')
 	def TO(self, target, kind, msg, *rest):
 		self.user.updateIdle()
-		lobby = self.factory.lobby
-		lobby.lookup('user', target).sendMsg('FROM', self.user.name, kind, msg, *rest)
+		house = self.factory.house
+		house.lookup('user', target).sendMsg('FROM', self.user.name, kind, msg, *rest)
 
 	@state('normal')
 	def IN(self, name, kind, msg, *rest):
 		self.user.updateIdle()
-		lobby = self.factory.lobby
-		lobby.lookup('room', name).sendMsg('IN', name, self.user.name, kind, msg, *rest)
+		house = self.factory.house
+		house.lookup('room', name).sendMsg('IN', name, self.user.name, kind, msg, *rest)
 
 	@state('normal')
 	def JOIN(self, name):
-		lobby = self.factory.lobby
-		room = lobby.lookup('room', name)
+		house = self.factory.house
+		room = house.lookup('room', name)
 		self.user.join(name)
 		room.add(self.user)
 		room.sendMsg('JOIN', name, self.user.name)
 
 	@state('normal')
 	def PART(self, name):
-		lobby = self.factory.lobby
-		room = lobby.lookup('room', name)
+		house = self.factory.house
+		room = house.lookup('room', name)
 		self.user.part(name)
 		room.sendMsg('PART', name, self.user.name)
 		room.remove(self.user)
@@ -227,28 +227,28 @@ class HaverTalker(LineOnlyReceiver):
 
 	@state('normal')
 	def OPEN(self, name):
-		lobby = self.factory.lobby
+		house = self.factory.house
 		room  = Room(name, owner = self.user.name)
-		lobby.add(room)
+		house.add(room)
 		self.sendMsg('OPEN', name)
 
 	@state('normal')
 	def CLOSE(self, name):
-		lobby = self.factory.lobby
-		room = lobby.lookup('room', name)
+		house = self.factory.house
+		room = house.lookup('room', name)
 		if room.info['owner'] != self.user.name:
 			raise Fail('access.owner', room.info['owner'], self.user.name)
 
 		room.sendMsg('PART', name, 'closed', self.user.name)
-		for user in room.members('user'):
+		for user in room.users:
 			user.part(room.name)
-		lobby.remove(room)
+		house.remove(room)
 		self.sendMsg('CLOSE', name)
 
 
 	@state('normal')
 	def INFO(self, ns, name):
-		lobby = self.factory.lobby
-		entity = lobby.lookup(ns, name)
+		house = self.factory.house
+		entity = house.lookup(ns, name)
 		self.sendMsg('INFO', ns, name, *entity.statInfo())
 

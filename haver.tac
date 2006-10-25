@@ -1,6 +1,6 @@
 #!/usr/bin/python2.4
 from haver.server.talker import HaverFactory, HaverTalker
-from haver.server.entity import Lobby, Room
+from haver.server.entity import House, Room
 from twisted.application import service, internet
 from twisted.persisted   import sob
 
@@ -11,10 +11,10 @@ service      = service.IService(application)
 applicationper = sob.IPersistable(application)
 
 
-lobby   = Lobby()
+house   = House('hardison.net')
 main    = Room('main')
-lobby.add(main)
-factory = HaverFactory(lobby)
+house.add(main)
+factory = HaverFactory(house)
 factory.hostname = 'localhost'
 factory.version  = 'HaverServer 1.0'
 factory.protocol = HaverTalker

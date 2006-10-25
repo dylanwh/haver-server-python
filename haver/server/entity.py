@@ -81,14 +81,78 @@ class User(Avatar):
 		else:
 			raise Fail('already.parted', name)
 
-class Room(Entity):
+
+
+class Room(User):
 	namespace = 'room'
+	def __init__(self, name, owner = '&root'):
+		User.__init__(self, name)
+		self.__users       = dict()
+		self.info['owner'] = owner
+		self.info['users'] = self.users
+
+
+	def sendMsg(self, *msg):
+		for user in self.users:
+			user.sendMsg(*msg)
+	
+	def lookup(self, name):
+		assert_name(name)
+		try:
+			return self.__users[ name.lower() ]
+		except KeyError:
+			raise Fail('unknown.user', name)
+
+	def add(self, user):
+		name = user.name.lower()
+		if self.__users.has_key(name):
+			raise Fail('exists.user', user.name)
+		self.__users[name] = user
+
+	def remove(self, user):
+		try:
+			del self.__users[ user.name.lower() ]
+		except KeyError:
+			raise Fail('unknown.user', user.name)
+
+	def getUsers(self):
+		return self.__users.values()
+
+	users = property(getUsers)
+
+
+class Lobby(Entity):
+	namespace = 'room'
+	name      = '&lobby'
+
+	def __init__(self, house):
+		self.house = house
+
+	def statInfo(self):
+		return self.house.statInfo()
+
+class Root(Entity):
+	namespace = 'user'
+
+	def __init__(self):
+		Entity.__init__(self, '&root')
+	
+	def sendMsg(self, *msg):
+		if msg[0] == 'FROM' and msg[2] == 'say':
+			print "%s: %s" % (msg[1], msg[3])
+
+class House(Entity):
+	namespace = 'house'
 
 	def __init__(self, name, owner = '&root'):
 		Entity.__init__(self, name)
 		self.info['owner'] = owner
+
 		self.__users = dict()
 		self.__members = dict(user = {}, room = {}, ghost = {})
+		room = Lobby(self)
+		self.add(room)
+		self.add(Root())
 		
 	def sendMsg(self, *msg):
 		for user in self.members('user'):
@@ -129,14 +193,3 @@ class Room(Entity):
 	def members(self, ns):
 		ents = self._get_ns(ns)
 		return ents.values()
-
-class Lobby(Room):
-	namespace = 'lobby'
-	def __init__(self):
-		Room.__init__(self, '&lobby')
-
-	def lookup(self, ns, name):
-		if name == '&lobby':
-			return self
-		else:
-			return Room.lookup(self, ns, name)
