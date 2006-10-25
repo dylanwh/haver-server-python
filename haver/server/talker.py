@@ -171,3 +171,4 @@ class HaverTalker(LineOnlyReceiver):
 	@state('normal')
 	def BYE(self, detail = None):
 		self.quit('bye', detail)
+		self.transport.loseConnection()
