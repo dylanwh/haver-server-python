@@ -144,9 +144,8 @@ class Root(User):
 class House(Entity):
 	namespace = 'house'
 
-	def __init__(self, name, owner = '&root'):
+	def __init__(self, name):
 		Entity.__init__(self, name)
-		self.info['owner'] = owner
 
 		self.__users = dict()
 		self.__members = dict(user = {}, room = {}, ghost = {})

@@ -15,8 +15,6 @@ house   = House('hardison.net')
 main    = Room('main')
 house.add(main)
 factory = HaverFactory(house)
-factory.hostname = 'localhost'
-factory.version  = 'HaverServer 1.0'
 factory.protocol = HaverTalker
 
 # Create the (sole) client

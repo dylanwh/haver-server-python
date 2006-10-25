@@ -9,7 +9,7 @@ from twisted.internet          import task
 
 from haver.server.errors import Fail, Bork
 from haver.server.entity import User, Room, Ghost, assert_name
-
+import haver.server
 
 def state(state):
 	def code(func):
@@ -157,7 +157,7 @@ class HaverTalker(LineOnlyReceiver):
 	def HAVER(self, version, supports = '', *rest):
 		self.version = version
 		self.supports = supports.split(',')
-		self.sendMsg('HAVER', self.factory.hostname, self.factory.version)
+		self.sendMsg('HAVER', self.factory.house.name, "%s/%s" % (haver.server.name, haver.server.version))
 		return 'login'
 
 	@state('login')
