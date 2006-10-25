@@ -110,11 +110,11 @@ class HaverTalker(LineOnlyReceiver):
 		if self.state == 'normal':
 			for name in self.user.groups:
 				group = lobby.lookup('group', name)
+				group.remove(self.user)
 				if reason is None:
 					group.sendMsg('QUIT', self.user.name, why)
 				else:
 					group.sendMsg('QUIT', self.user.name, why, reason)
-				group.remove(self.user)
 
 			lobby.remove(self.user)
 			self.state = 'quit'
@@ -170,5 +170,5 @@ class HaverTalker(LineOnlyReceiver):
 
 	@state('normal')
 	def BYE(self, detail = None):
-		self.quit('bye', detail)
 		self.transport.loseConnection()
+		self.quit('bye', detail)
