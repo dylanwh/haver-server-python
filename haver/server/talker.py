@@ -233,6 +233,20 @@ class HaverTalker(LineOnlyReceiver):
 		self.sendMsg('OPEN', name)
 
 	@state('normal')
+	def CLOSE(self, name):
+		lobby = self.factory.lobby
+		room = lobby.lookup('room', name)
+		if room.info['owner'] != self.user.name:
+			raise Fail('access.owner', room.info['owner'], self.user.name)
+
+		room.sendMsg('PART', name, 'closed', self.user.name)
+		for user in room.members('user'):
+			user.part(room.name)
+		lobby.remove(room)
+		self.sendMsg('CLOSE', name)
+
+
+	@state('normal')
 	def INFO(self, ns, name):
 		lobby = self.factory.lobby
 		entity = lobby.lookup(ns, name)
