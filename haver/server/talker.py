@@ -101,16 +101,24 @@ class HaverTalker(LineOnlyReceiver):
 		log.msg('New client from ' + str(self.addr))
 
 	def connectionLost(self, reason):
-		lobby = self.factory.lobby
 		log.msg('Lost client from ' + str(self.addr))
-		for name in self.user.groups:
-			group = lobby.lookup('group', name)
-			group.sendMsg('QUIT', 'disconnect')
-			group.remove(self.user)
+		self.quit('closed')
 
-		lobby.remove(self.user)
+	def quit(self, why, reason = None):
+		lobby = self.factory.lobby
+		
+		if self.state == 'normal':
+			for name in self.user.groups:
+				group = lobby.lookup('group', name)
+				if reason is None:
+					group.sendMsg('QUIT', self.user.name, why)
+				else:
+					group.sendMsg('QUIT', self.user.name, why, reason)
+				group.remove(self.user)
 
-	
+			lobby.remove(self.user)
+			self.state = 'quit'
+
 	@state('connect')
 	def HAVER(self, version, supports = '', *rest):
 		self.version = version
