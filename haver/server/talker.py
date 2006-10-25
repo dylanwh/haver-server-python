@@ -66,7 +66,7 @@ class HaverTalker(LineOnlyReceiver):
 		msg = line.rstrip("\r").split("\t")
 
 		if not self.cmdpat.match(msg[0]):
-			print "This is an example of a badly formed command: %s" % name
+			print "This is an example of a badly formed command: %s" % msg[0]
 			raise Bork("You're not the man I married!")
 
 		return (msg[0], msg[1:])
@@ -137,6 +137,11 @@ class HaverTalker(LineOnlyReceiver):
 		"""Called every once and a while. Issues a ping if this client hasn't sent a command recently"""
 		now      = time()
 		duration = int (now - self.lastCmd)
+
+		if self.state != 'normal':
+			self.tardy = None
+			return
+
 		if self.tardy is not None:
 			self.sendMsg('BYE', 'ping')
 			self.transport.loseConnection()
