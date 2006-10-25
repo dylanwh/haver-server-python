@@ -54,7 +54,7 @@ class HaverTalker(LineOnlyReceiver):
 
 		self.lastCmd   = time()
 		self.tardy     = None
-		self.pingTime  = 6
+		self.pingTime  = 60
 		self.pingLoop  = task.LoopingCall(self.checkPing)
 		self.pingLoop.start(self.pingTime)
 
@@ -219,4 +219,9 @@ class HaverTalker(LineOnlyReceiver):
 	def POKE(self, nonce):
 		self.sendMsg('OUCH', nonce)
 
-
+	@state('normal')
+	def OPEN(self, name):
+		lobby = self.factory.lobby
+		room  = Room(name, owner = self.user.name)
+		lobby.add(room)
+		self.sendMsg('OPEN', name)
