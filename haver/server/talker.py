@@ -173,16 +173,22 @@ class HaverTalker(LineOnlyReceiver):
 			lobby.add(user)
 			self.sendMsg('HELLO', name, str(self.addr.host))
 			self.user = user
+			user.info['address'] = str(self.addr.host)
+			user.info['version'] = self.version
+			del self.version
+
 			return 'normal'
 
 
 	@state('normal')
 	def TO(self, target, kind, msg, *rest):
+		self.user.updateIdle()
 		lobby = self.factory.lobby
 		lobby.lookup('user', target).sendMsg('FROM', self.user.name, kind, msg, *rest)
 
 	@state('normal')
 	def IN(self, name, kind, msg, *rest):
+		self.user.updateIdle()
 		lobby = self.factory.lobby
 		lobby.lookup('room', name).sendMsg('IN', name, self.user.name, kind, msg, *rest)
 
@@ -225,3 +231,10 @@ class HaverTalker(LineOnlyReceiver):
 		room  = Room(name, owner = self.user.name)
 		lobby.add(room)
 		self.sendMsg('OPEN', name)
+
+	@state('normal')
+	def INFO(self, ns, name):
+		lobby = self.factory.lobby
+		entity = lobby.lookup(ns, name)
+		self.sendMsg('INFO', ns, name, *entity.statInfo())
+

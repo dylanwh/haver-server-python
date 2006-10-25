@@ -16,6 +16,7 @@ def mask_ip(ip):
 class Entity(object):
 	def __init__(self, name):
 		self.name = name
+		self.info = dict()
 
 	def __str__(self):
 		return self.namespace + "/" + self.__name
@@ -28,6 +29,14 @@ class Entity(object):
 
 	name = property(getName, setName, delName, "I'm the 'name' property.")
 
+	def statInfo(self):
+		for (key, value) in self.info.items():
+			yield key
+			try:
+				yield str(value())
+			except TypeError:
+				yield str(value)
+
 class Ghost(Entity):
 	pass
 
@@ -36,17 +45,27 @@ class Avatar(Entity):
 		Entity.__init__(self, name)
 		self.talker        = talker
 
-	def sendMsg(self, *msg):
-		self.talker.sendMsg(*msg)
+		self.updateIdle()
+		self.info['idle'] = self.getIdle
+
+	def updateIdle(self):
+		self.idleTime = time.time()
+
+	def getIdle(self):
+		return int (time.time() - self.idleTime)
+
+	def sendMsg(self, cmd, *args):
+		self.talker.sendMsg(cmd, *args)
+
+
 
 class User(Avatar):
 	namespace = 'user'
 
 	def __init__(self, *args, **kwargs):
 		Avatar.__init__(self, *args, **kwargs)
-		self.email        = None
-		self.lastActivity = int(time.time())
 		self.rooms     = set()
+		self.info['rooms'] = lambda: ','.join(self.rooms)
 
 	def join(self, name):
 		name = name.lower()
@@ -67,7 +86,7 @@ class Room(Entity):
 
 	def __init__(self, name, owner = '&root'):
 		Entity.__init__(self, name)
-		self.owner = owner
+		self.info['owner'] = owner
 		self.__users = dict()
 		self.__members = dict(user = {}, room = {}, ghost = {})
 		
