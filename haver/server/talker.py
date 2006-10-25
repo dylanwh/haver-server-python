@@ -8,7 +8,7 @@ from twisted.internet          import reactor
 from twisted.internet          import task
 
 from haver.server.errors import Fail, Bork
-from haver.server.entity import User, Room, Ghost
+from haver.server.entity import User, Room, Ghost, assert_name
 
 
 def state(state):
@@ -47,7 +47,7 @@ class HaverFactory(Factory):
 class HaverTalker(LineOnlyReceiver):
 	def __init__(self, addr):
 		self.addr      = addr
-		self.cmdpat    = re.compile('^[A-Z][A-Z:_-]+$')
+		self.cmdpat    = re.compile('^[A-Z][A-Z:_-]*$')
 		self.delimiter = "\n"
 		self.state     = 'none'
 
@@ -163,6 +163,10 @@ class HaverTalker(LineOnlyReceiver):
 	@state('login')
 	def IDENT(self, name, *rest):
 		house = self.factory.house
+		assert_name(name)
+		if name[0] == '&' or '@' in name:
+			raise Fail('reserved.name', name)
+
 		try:
 			ghost = house.lookup('ghost', name)
 			self.ghost = ghost

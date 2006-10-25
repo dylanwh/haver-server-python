@@ -62,8 +62,8 @@ class Avatar(Entity):
 class User(Avatar):
 	namespace = 'user'
 
-	def __init__(self, *args, **kwargs):
-		Avatar.__init__(self, *args, **kwargs)
+	def __init__(self, name, talker):
+		Avatar.__init__(self, name, talker)
 		self.rooms     = set()
 		self.info['rooms'] = lambda: ','.join(self.rooms)
 
@@ -83,10 +83,10 @@ class User(Avatar):
 
 
 
-class Room(User):
+class Room(Entity):
 	namespace = 'room'
 	def __init__(self, name, owner = '&root'):
-		User.__init__(self, name)
+		Entity.__init__(self, name)
 		self.__users       = dict()
 		self.info['owner'] = owner
 		self.info['users'] = self.users
@@ -131,11 +131,11 @@ class Lobby(Entity):
 	def statInfo(self):
 		return self.house.statInfo()
 
-class Root(Entity):
+class Root(User):
 	namespace = 'user'
 
 	def __init__(self):
-		Entity.__init__(self, '&root')
+		User.__init__(self, '&root', None)
 	
 	def sendMsg(self, *msg):
 		if msg[0] == 'FROM' and msg[2] == 'say':
@@ -152,7 +152,7 @@ class House(Entity):
 		self.__members = dict(user = {}, room = {}, ghost = {})
 		room = Lobby(self)
 		self.add(room)
-		self.add(Root())
+		self.add( Root() )
 		
 	def sendMsg(self, *msg):
 		for user in self.members('user'):
