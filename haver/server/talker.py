@@ -256,3 +256,15 @@ class HaverTalker(LineOnlyReceiver):
 		entity = house.lookup(ns, name)
 		self.sendMsg('INFO', ns, name, *entity.statInfo())
 
+	@state('normal')
+	def LIST(self, name, ns):
+		house = self.factory.house
+		if ns == 'channel':
+			ns = 'room'
+		if name == '&lobby':
+			names = [ x.name for x in house.members(ns) ]
+			self.sendMsg('LIST', name, ns, *names)
+		else:
+			room = house.lookup('room', name)
+			names = [ x.name for x in room.users ]
+			self.sendMsg('LIST', name, ns, *names)
