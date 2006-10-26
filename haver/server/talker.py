@@ -107,7 +107,7 @@ class HaverTalker(LineOnlyReceiver):
 
 
 	def sendMsg(self, *msg):
-		self.sendLine("\t".join(msg))
+		self.sendLine("\t".join(msg) + "\r")
 	
 	
 	def connectionMade(self):
