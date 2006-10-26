@@ -157,6 +157,18 @@ class Root(User):
 		if msg[0] == 'FROM' and msg[2] == 'say':
 			print "%s: %s" % (msg[1], msg[3])
 
+class Echo(User):
+	namespace = 'user'
+
+	def __init__(self, house):
+		User.__init__(self, '&echo', None)
+		self.house = house
+	
+	def sendMsg(self, *msg):
+		if msg[0] == 'FROM':
+			user = self.house.lookup('user', msg[1])
+			user.sendMsg('FROM', self.name, *msg[2:])
+
 class House(Entity):
 	namespace = 'house'
 
