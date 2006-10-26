@@ -201,7 +201,12 @@ class HaverTalker(LineOnlyReceiver):
 		house = self.factory.house
 		room = house.lookup('room', name)
 		self.user.join(name)
-		room.add(self.user)
+		try:
+			room.add(self.user)
+		except Fail, f:
+			self.user.part(name)
+			raise f
+
 		room.sendMsg('JOIN', name, self.user.name)
 
 	@state('normal')

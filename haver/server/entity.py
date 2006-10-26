@@ -131,6 +131,22 @@ class Lobby(Entity):
 	def statInfo(self):
 		return self.house.statInfo()
 
+	def add(self, user):
+		raise Fail('forbidden')
+
+	def remove(self, user):
+		raise Fail('forbidden')
+
+	def lookup(self, name):
+		raise Fail('forbidden')
+
+	def getUsers(self):
+		return self.house.members('user')
+
+	users = property(getUsers)
+
+
+
 class Root(User):
 	namespace = 'user'
 
