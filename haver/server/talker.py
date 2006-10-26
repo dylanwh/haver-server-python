@@ -59,7 +59,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.pingLoop.start(self.pingTime)
 
 	def parseLine(self, line):
-		if len(line) == 0:
+		if len(line) == 0 or line == "\r":
 			print "Got empty line"
 			raise Bork('Your line is empty')
 

@@ -13,7 +13,9 @@ applicationper = sob.IPersistable(application)
 
 house   = House('hardison.net')
 main    = Room('main')
+lobby    = Room('lobby')
 house.add(main)
+house.add(lobby)
 factory = HaverFactory(house)
 factory.protocol = HaverTalker
 
