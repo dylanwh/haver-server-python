@@ -243,8 +243,8 @@ class HaverTalker(LineOnlyReceiver):
 		if room.info['owner'] != self.user.name:
 			raise Fail('access.owner', room.info['owner'], self.user.name)
 
-		room.sendMsg('PART', name, 'closed', self.user.name)
 		for user in room.users:
+			user.sendMsg('CLOSE', name, self.user.name)
 			user.part(room.name)
 		house.remove(room)
 		self.sendMsg('CLOSE', name)
