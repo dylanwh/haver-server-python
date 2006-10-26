@@ -77,9 +77,10 @@ class HaverTalker(LineOnlyReceiver):
 			cmd, args = self.parseLine(line)
 			self.cmd = cmd
 			self.lastCmd = time()
+			method = cmd.replace(':', '_')
 
-			if hasattr(self, cmd):
-				f = getattr(self, cmd)
+			if hasattr(self, method):
+				f = getattr(self, method)
 				if not hasattr(f, 'state'):
 					raise Fail('unknown.command', cmd)
 				if f.state != self.state:
@@ -102,8 +103,7 @@ class HaverTalker(LineOnlyReceiver):
 			log.msg('Borking client: %s' % bork.msg)
 			if self.state != 'connect':
 				self.sendMsg('BORK', bork.msg)
-			self.transport.loseConnection()
-			self.quit('bork')
+			self.disconnect('bork')
 
 
 	def sendMsg(self, *msg):
@@ -133,6 +133,11 @@ class HaverTalker(LineOnlyReceiver):
 			house.remove(self.user)
 			self.state = 'quit'
 
+	def disconnect(self, *args):
+		self.sendMsg('BYE', *args)
+		self.transport.loseConnection()
+		self.quit(*args)
+
 	def checkPing(self):
 		"""Called every once and a while. Issues a ping if this client hasn't sent a command recently"""
 		now      = time()
@@ -144,8 +149,7 @@ class HaverTalker(LineOnlyReceiver):
 
 		if self.tardy is not None:
 			self.sendMsg('BYE', 'ping')
-			self.transport.loseConnection()
-			self.quit('ping')
+			self.disconnect('ping')
 			return
 
 		if duration > self.pingTime:
@@ -167,22 +171,35 @@ class HaverTalker(LineOnlyReceiver):
 		if name[0] == '&' or '@' in name:
 			raise Fail('reserved.name', name)
 
+		user = User(name, self)
+		house.add(user)
+		self.sendMsg('HELLO', name, str(self.addr.host))
+		self.user = user
+		user.info['address'] = self.addr.host
+		user.info['version'] = self.version
+		del self.version
+
+		return 'normal'
+
+	@state('login')
+	def GHOST(self, name, *rest):
+		house = self.factory.house
+		assert_name(name)
+		if name[0] == '&' or '@' in name:
+			raise Fail('reserved.name', name)
+
 		try:
-			ghost = house.lookup('ghost', name)
-			self.ghost = ghost
-			self.sendMsg('AUTH:TYPES', 'AUTH:BASIC')
-		except Fail, fail:
-			if fail.name != 'unknown.ghost': raise fail
-			user = User(name, self)
-			house.add(user)
-			self.sendMsg('HELLO', name, str(self.addr.host))
-			self.user = user
-			user.info['address'] = str(self.addr.host)
-			user.info['version'] = self.version
-			del self.version
-
-			return 'normal'
-
+			return self.IDENT(name, *rest)
+		except Fail, f:
+			if f.name == 'exists.user':
+				user = house.lookup('user', name)
+				if user.info['address'] != self.addr.host:
+					# TODO: I don't think failure name.
+					raise Fail('mismatch.ip')
+				user.talker.disconnect('ghost')
+				return self.IDENT(name, *rest)
+			else:
+				raise f
 
 	@state('normal')
 	def TO(self, target, kind, msg, *rest):
@@ -219,9 +236,7 @@ class HaverTalker(LineOnlyReceiver):
 
 	@state('normal')
 	def BYE(self, detail = None):
-		self.sendMsg('BYE', 'bye')
-		self.transport.loseConnection()
-		self.quit('bye', detail)
+		self.disconnect('bye', detail)
 
 	@state('normal')
 	def PONG(self, nonce):
