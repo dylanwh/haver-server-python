@@ -276,7 +276,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.sendMsg('LS', ns, *names)
 
 	@state('normal')
-	def USERS(self, ns):
+	def USERS(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
 		names = [ x.name for x in room.users ]
