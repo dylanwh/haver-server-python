@@ -128,7 +128,7 @@ class Room(Entity):
 	users = property(getUsers)
 
 	def __iter__(self):
-		return self.getUsers()
+		return iter( self.__users.values() )
 
 class Lobby(Entity):
 	namespace = 'room'
