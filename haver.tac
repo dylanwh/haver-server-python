@@ -1,8 +1,20 @@
 #!/usr/bin/python2.4
 from haver.server.talker import HaverFactory, HaverTalker
-from haver.server.entity import House, Room, Echo
+from haver.server.entity import House, Room, Echo, Lobby, Root
 from twisted.application import service, internet
 from twisted.persisted   import sob
+from OpenSSL import SSL
+
+class ServerContextFactory:
+	def getContext(self):
+		"""Create an SSL context.
+
+		This is a sample implementation that loads a certificate from a file
+		called 'server.pem'."""
+		ctx = SSL.Context(SSL.SSLv23_METHOD)
+		ctx.use_certificate_file('server.pem')
+		ctx.use_privatekey_file('server.pem')
+		return ctx
 
 application  = service.Application("haverd")
 service      = service.IService(application)
@@ -11,23 +23,18 @@ service      = service.IService(application)
 applicationper = sob.IPersistable(application)
 
 
-house   = House('hardison.net')
-main    = Room('main')
-lobby    = Room('lobby')
-house.add(main)
-house.add(lobby)
-house.add( Echo(house) )
+house = House('hardison.net')
+ents  = [ Lobby(house), Room('main'), Room('lobby'), Echo(house), Root() ]
+for e in ents:
+	house.add(e)
+
 factory = HaverFactory(house)
 factory.protocol = HaverTalker
 
-# Create the (sole) client
-# Normally, the echo protocol lives on port 7, but since that
-# is a privileged port, for this example we'll use port 7001
-
 servers = [
-	internet.TCPServer(7575, factory)
+	internet.TCPServer(7575, factory),
+	internet.SSLServer(7474, factory, ServerContextFactory())
 ]
-
 # Tie the service to the application
 for server in servers:
 	server.setServiceParent(service)

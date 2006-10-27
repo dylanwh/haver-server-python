@@ -177,9 +177,6 @@ class House(Entity):
 
 		self.__users = dict()
 		self.__members = dict(user = {}, room = {}, ghost = {})
-		room = Lobby(self)
-		self.add(room)
-		self.add( Root() )
 		
 	def sendMsg(self, *msg):
 		for user in self.members('user'):
