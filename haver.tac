@@ -28,12 +28,10 @@ ents  = [ Lobby(house), Room('main'), Room('lobby'), Echo(house), Root() ]
 for e in ents:
 	house.add(e)
 
-factory = HaverFactory(house)
-factory.protocol = HaverTalker
 
 servers = [
-	internet.TCPServer(7575, factory),
-	internet.SSLServer(7474, factory, ServerContextFactory())
+	internet.TCPServer(7575, HaverFactory(house)),
+	internet.SSLServer(7474, HaverFactory(house, ssl = True), ServerContextFactory())
 ]
 # Tie the service to the application
 for server in servers:

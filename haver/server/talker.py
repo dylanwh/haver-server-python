@@ -35,8 +35,10 @@ def catch_arity(f, args):
 
 class HaverFactory(Factory):
 
-	def __init__(self, house):
+	def __init__(self, house, ssl = False):
 		self.house = house
+		self.protocol = HaverTalker
+		self.ssl = ssl
 
 	def buildProtocol(self, addr):
 		p = self.protocol(addr)
@@ -177,6 +179,10 @@ class HaverTalker(LineOnlyReceiver):
 		self.user = user
 		user.info['address'] = self.addr.host
 		user.info['version'] = self.version
+		if self.factory.ssl:
+			user.info['secure'] = 'yes'
+		else:
+			user.info['secure'] = 'no'
 		del self.version
 
 		return 'normal'
