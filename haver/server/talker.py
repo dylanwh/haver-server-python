@@ -270,7 +270,8 @@ class HaverTalker(LineOnlyReceiver):
 			raise Fail('access.owner', room.info['owner'], self.user.name)
 
 		for user in room.users:
-			user.sendMsg('CLOSED', name, self.user.name)
+			if user.name != self.user.name:
+				user.sendMsg('CLOSE', name, self.user.name)
 			user.part(room.name)
 		house.remove(room)
 		self.sendMsg('CLOSE', name)
@@ -307,3 +308,16 @@ class HaverTalker(LineOnlyReceiver):
 		room = house.lookup('room', name)
 		names = [ x.name for x in room.users ]
 		self.sendMsg('USERS', *names)
+
+	@state('normal')
+	def KICK(self, rname, uname):
+		house = self.factory.house
+		room = house.lookup('room', rname)
+		user = house.lookup('user', uname)
+		if room.info['owner'] != self.user.name:
+			raise Fail('access.owner', room.info['owner'], self.user.name)
+
+		user.part(rname)
+		room.sendMsg('KICK', room.name, user.name, self.user.name)
+		room.remove(user)
+	
