@@ -223,6 +223,9 @@ class HaverTalker(LineOnlyReceiver):
 	def JOIN(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
+		if room['secure'] == 'yes' and self.user['secure'] == 'no':
+			raise Fail('insecure', name)
+
 		self.user.join(name)
 		try:
 			room.add(self.user)
