@@ -21,6 +21,9 @@ class Entity(object):
 	def __getitem__(self, key):
 		return self.info[key]
 
+	def __setitem__(self, key, val):
+		return self.info[key] = val
+
 	def __str__(self):
 		return self.namespace + "/" + self.__name
 
