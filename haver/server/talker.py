@@ -274,7 +274,7 @@ class HaverTalker(LineOnlyReceiver):
 				user.sendMsg('CLOSE', name, self.user.name)
 			user.part(room.name)
 		house.remove(room)
-		self.sendMsg('CLOSE', name)
+		self.sendMsg('CLOSE', name, self.user.name)
 
 
 	@state('normal')
