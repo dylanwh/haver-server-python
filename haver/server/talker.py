@@ -319,4 +319,20 @@ class HaverTalker(LineOnlyReceiver):
 		user.part(rname)
 		room.sendMsg('PART', room.name, user.name, 'kick', self.user.name)
 		room.remove(user)
-	
+
+	@state('normal')
+	def SECURE(self, name):
+		house = self.factory.house
+		room = house.lookup('room', name)
+		names = []
+		for user in room:
+			if user['secure'] == 'no':
+				user.part(name)
+				room.sendMsg('PART', room.name, user.name, 'secure', self.user.name)
+				room.remove(user)
+				names.append(user.name)
+
+		room['secure'] = 'yes'
+		self.sendMsg('SECURE', name, *names)
+
+

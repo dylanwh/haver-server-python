@@ -7,45 +7,32 @@ def assert_name(n):
 	if not namepattern.match(n):
 		raise Fail('invalid.name', n)
 
-def mask_ip(ip):
-	parts = ip.split('.')
-	assert len(parts) == 4
-	parts[3] = '*'
-	return '.'.join(parts)
+def flatten(tuples):
+	for (key, value) in tuples:
+		yield key
+		try:
+			yield str(value())
+		except TypeError:
+			yield str(value)
 
 class Entity(object):
+	info = property(lambda self: flatten( self.__info.items() ) )
+	name = property(lambda self: self.__name)
+
 	def __init__(self, name):
-		self.name = name
-		self.info = dict()
+		assert_name(name)
+		self.__name = name
+		self.__info = dict()
 
 	def __getitem__(self, key):
-		return self.info[key]
+		return self.__info[key]
 
 	def __setitem__(self, key, val):
-		self.info[key] = val
-		return self.info[key]
+		self.__info[key] = val
+		return self.__info[key]
 
 	def __str__(self):
 		return self.namespace + "/" + self.__name
-
-	def getName(self): return self.__name
-	def delName(self): del self.__name
-	def setName(self, name):
-		assert_name(name)
-		self.__name = name
-
-	name = property(getName, setName, delName, "I'm the 'name' property.")
-
-	def statInfo(self):
-		for (key, value) in self.info.items():
-			yield key
-			try:
-				yield str(value())
-			except TypeError:
-				yield str(value)
-
-class Ghost(Entity):
-	pass
 
 class Avatar(Entity):
 	def __init__(self, name, talker):
@@ -92,12 +79,18 @@ class User(Avatar):
 
 class Room(Entity):
 	namespace = 'room'
+	users = property(lambda self: self.__users.values())
+
 	def __init__(self, name, owner = '&root'):
 		Entity.__init__(self, name)
 		self.__users       = dict()
 		self['owner'] = owner
 		self['users'] = self.users
 		self['secure'] = 'no'
+
+	def __iter__(self):
+		return iter( self.users )
+
 
 	def sendMsg(self, *msg):
 		for user in self.users:
@@ -122,20 +115,17 @@ class Room(Entity):
 		except KeyError:
 			raise Fail('unknown.user', user.name)
 
-	def getUsers(self):
-		return self.__users.values()
-
-	users = property(getUsers)
-
-	def __iter__(self):
-		return iter( self.__users.values() )
 
 class Lobby(Entity):
 	namespace = 'room'
 	name      = '&lobby'
+	users     = property(lambda self: self.house.members('user'))
 
 	def __init__(self, house):
 		self.house = house
+
+	def __iter__(self):
+		return iter ( self.users )
 
 	def statInfo(self):
 		return self.house.statInfo()
@@ -148,14 +138,6 @@ class Lobby(Entity):
 
 	def lookup(self, name):
 		raise Fail('forbidden')
-
-	def getUsers(self):
-		return self.house.members('user')
-
-	users = property(getUsers)
-	def __iter__(self):
-		return self.getUsers()
-
 
 
 class Root(User):
