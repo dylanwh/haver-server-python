@@ -177,12 +177,12 @@ class HaverTalker(LineOnlyReceiver):
 		house.add(user)
 		self.sendMsg('HELLO', name, str(self.addr.host))
 		self.user = user
-		user.info['address'] = self.addr.host
-		user.info['version'] = self.version
+		user['address'] = self.addr.host
+		user['version'] = self.version
 		if self.factory.ssl:
-			user.info['secure'] = 'yes'
+			user['secure'] = 'yes'
 		else:
-			user.info['secure'] = 'no'
+			user['secure'] = 'no'
 		del self.version
 
 		return 'normal'
@@ -199,7 +199,7 @@ class HaverTalker(LineOnlyReceiver):
 		except Fail, f:
 			if f.name == 'exists.user':
 				user = house.lookup('user', name)
-				if user.info['address'] != self.addr.host:
+				if user['address'] != self.addr.host:
 					# TODO: I don't think failure name.
 					raise Fail('mismatch.ip')
 				user.talker.disconnect('ghost')
@@ -266,10 +266,10 @@ class HaverTalker(LineOnlyReceiver):
 	def CLOSE(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
-		if room.info['owner'] != self.user.name:
-			raise Fail('access.owner', room.info['owner'], self.user.name)
+		if room['owner'] != self.user.name:
+			raise Fail('access.owner', room['owner'], self.user.name)
 
-		for user in room.users:
+		for user in room:
 			user.sendMsg('PART', name, user.name, 'close', self.user.name)
 			user.part(room.name)
 		house.remove(room)
@@ -292,7 +292,7 @@ class HaverTalker(LineOnlyReceiver):
 			self.sendMsg('LIST', name, ns, *names)
 		else:
 			room = house.lookup('room', name)
-			names = [ x.name for x in room.users ]
+			names = [ x.name for x in room ]
 			self.sendMsg('LIST', name, ns, *names)
 
 	@state('normal')
@@ -305,7 +305,7 @@ class HaverTalker(LineOnlyReceiver):
 	def USERS(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
-		names = [ x.name for x in room.users ]
+		names = [ x.name for x in room ]
 		self.sendMsg('USERS', *names)
 
 	@state('normal')
@@ -313,8 +313,8 @@ class HaverTalker(LineOnlyReceiver):
 		house = self.factory.house
 		room = house.lookup('room', rname)
 		user = house.lookup('user', uname)
-		if room.info['owner'] != self.user.name:
-			raise Fail('access.owner', room.info['owner'], self.user.name)
+		if room['owner'] != self.user.name:
+			raise Fail('access.owner', room['owner'], self.user.name)
 
 		user.part(rname)
 		room.sendMsg('PART', room.name, user.name, 'kick', self.user.name)

@@ -18,6 +18,9 @@ class Entity(object):
 		self.name = name
 		self.info = dict()
 
+	def __getitem__(self, key):
+		return self.info[key]
+
 	def __str__(self):
 		return self.namespace + "/" + self.__name
 
@@ -46,7 +49,7 @@ class Avatar(Entity):
 		self.talker        = talker
 
 		self.updateIdle()
-		self.info['idle'] = self.getIdle
+		self['idle'] = self.getIdle
 
 	def updateIdle(self):
 		self.idleTime = time.time()
@@ -65,7 +68,7 @@ class User(Avatar):
 	def __init__(self, name, talker):
 		Avatar.__init__(self, name, talker)
 		self.rooms     = set()
-		self.info['rooms'] = lambda: ','.join(self.rooms)
+		self['rooms'] = lambda: ','.join(self.rooms)
 
 	def join(self, name):
 		name = name.lower()
@@ -88,9 +91,9 @@ class Room(Entity):
 	def __init__(self, name, owner = '&root'):
 		Entity.__init__(self, name)
 		self.__users       = dict()
-		self.info['owner'] = owner
-		self.info['users'] = self.users
-
+		self['owner'] = owner
+		self['users'] = self.users
+		self['secure'] = 'no'
 
 	def sendMsg(self, *msg):
 		for user in self.users:
@@ -120,6 +123,8 @@ class Room(Entity):
 
 	users = property(getUsers)
 
+	def __iter__(self):
+		return self.getUsers()
 
 class Lobby(Entity):
 	namespace = 'room'
@@ -144,6 +149,8 @@ class Lobby(Entity):
 		return self.house.members('user')
 
 	users = property(getUsers)
+	def __iter__(self):
+		return self.getUsers()
 
 
 
