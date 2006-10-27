@@ -8,7 +8,7 @@ from twisted.internet          import reactor
 from twisted.internet          import task
 
 from haver.server.errors import Fail, Bork
-from haver.server.entity import User, Room, Ghost, assert_name
+from haver.server.entity import User, Room, assert_name
 import haver.server
 
 def state(state):
