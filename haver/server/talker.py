@@ -11,9 +11,9 @@ from haver.server.errors import Fail, Bork
 from haver.server.entity import User, Room, assert_name
 import haver.server
 
-def state(state):
+def phase(phase):
 	def code(func):
-		func.state = state
+		func.phase = phase
 		return func
 	return code
 
@@ -51,7 +51,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.addr      = addr
 		self.cmdpat    = re.compile('^[A-Z][A-Z:_-]*$')
 		self.delimiter = "\n"
-		self.state     = 'none'
+		self.phase     = 'none'
 
 
 		self.lastCmd   = time()
@@ -83,27 +83,27 @@ class HaverTalker(LineOnlyReceiver):
 
 			if hasattr(self, method):
 				f = getattr(self, method)
-				if not hasattr(f, 'state'):
+				if not hasattr(f, 'phase'):
 					raise Fail('unknown.command', cmd)
-				if f.state != self.state:
+				if f.phase != self.phase:
 					raise Fail('invalid.command', cmd)
 
 				newstate = catch_arity(f, args)
 				if newstate is not None:
-					self.state = newstate
+					self.phase = newstate
 			else:
 				raise Fail('unknown.command', cmd)
 			
 		except Fail, failure:
 			log.msg('Command %s failed with failure %s' % (self.cmd, failure.name))
-			if self.state != 'connect':
+			if self.phase != 'connect':
 				self.sendMsg('FAIL', self.cmd, failure.name, *failure.args)
 			else:
 				self.transport.loseConnection()
 
 		except Bork, bork:
 			log.msg('Borking client: %s' % bork.msg)
-			if self.state != 'connect':
+			if self.phase != 'connect':
 				self.sendMsg('BORK', bork.msg)
 			self.disconnect('bork')
 
@@ -113,7 +113,7 @@ class HaverTalker(LineOnlyReceiver):
 	
 	
 	def connectionMade(self):
-		self.state = 'connect'
+		self.phase = 'connect'
 		log.msg('New client from ' + str(self.addr))
 
 	def connectionLost(self, reason):
@@ -123,7 +123,7 @@ class HaverTalker(LineOnlyReceiver):
 	def quit(self, why, reason = None):
 		house = self.factory.house
 		
-		if self.state == 'normal':
+		if self.phase == 'normal':
 			for name in self.user.rooms:
 				room = house.lookup('room', name)
 				room.remove(self.user)
@@ -133,7 +133,7 @@ class HaverTalker(LineOnlyReceiver):
 					room.sendMsg('QUIT', self.user.name, why, reason)
 
 			house.remove(self.user)
-			self.state = 'quit'
+			self.phase = 'quit'
 
 	def disconnect(self, *args):
 		self.sendMsg('BYE', *args)
@@ -145,7 +145,7 @@ class HaverTalker(LineOnlyReceiver):
 		now      = time()
 		duration = int (now - self.lastCmd)
 
-		if self.state != 'normal':
+		if self.phase != 'normal':
 			self.tardy = None
 			return
 
@@ -159,14 +159,14 @@ class HaverTalker(LineOnlyReceiver):
 			self.tardy = 'foo'
 	
 
-	@state('connect')
+	@phase('connect')
 	def HAVER(self, version, supports = '', *rest):
 		self.version = version
 		self.supports = supports.split(',')
 		self.sendMsg('HAVER', self.factory.house.name, "%s/%s" % (haver.server.name, haver.server.version))
 		return 'login'
 
-	@state('login')
+	@phase('login')
 	def IDENT(self, name, *rest):
 		house = self.factory.house
 		assert_name(name)
@@ -187,7 +187,7 @@ class HaverTalker(LineOnlyReceiver):
 
 		return 'normal'
 
-	@state('login')
+	@phase('login')
 	def GHOST(self, name, *rest):
 		house = self.factory.house
 		assert_name(name)
@@ -207,19 +207,19 @@ class HaverTalker(LineOnlyReceiver):
 			else:
 				raise f
 
-	@state('normal')
+	@phase('normal')
 	def TO(self, target, kind, msg, *rest):
 		self.user.updateIdle()
 		house = self.factory.house
 		house.lookup('user', target).sendMsg('FROM', self.user.name, kind, msg, *rest)
 
-	@state('normal')
+	@phase('normal')
 	def IN(self, name, kind, msg, *rest):
 		self.user.updateIdle()
 		house = self.factory.house
 		house.lookup('room', name).sendMsg('IN', name, self.user.name, kind, msg, *rest)
 
-	@state('normal')
+	@phase('normal')
 	def JOIN(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
@@ -235,7 +235,7 @@ class HaverTalker(LineOnlyReceiver):
 
 		room.sendMsg('JOIN', name, self.user.name)
 
-	@state('normal')
+	@phase('normal')
 	def PART(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
@@ -243,29 +243,29 @@ class HaverTalker(LineOnlyReceiver):
 		room.sendMsg('PART', name, self.user.name)
 		room.remove(self.user)
 
-	@state('normal')
+	@phase('normal')
 	def BYE(self, detail = None):
 		self.disconnect('bye', detail)
 
-	@state('normal')
+	@phase('normal')
 	def PONG(self, nonce):
 		if self.tardy is None:
 			raise Bork('You smell like SPAM!')
 		else:
 			self.tardy = None
 
-	@state('normal')
+	@phase('normal')
 	def POKE(self, nonce):
 		self.sendMsg('OUCH', nonce)
 
-	@state('normal')
+	@phase('normal')
 	def OPEN(self, name):
 		house = self.factory.house
 		room  = Room(name, owner = self.user.name)
 		house.add(room)
 		self.sendMsg('OPEN', name)
 
-	@state('normal')
+	@phase('normal')
 	def CLOSE(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
@@ -279,13 +279,13 @@ class HaverTalker(LineOnlyReceiver):
 		self.sendMsg('CLOSE', name)
 
 
-	@state('normal')
+	@phase('normal')
 	def INFO(self, ns, name):
 		house = self.factory.house
 		entity = house.lookup(ns, name)
 		self.sendMsg('INFO', ns, name, *entity.info)
 
-	@state('normal')
+	@phase('normal')
 	def LIST(self, name, ns):
 		house = self.factory.house
 		if ns == 'channel':
@@ -298,20 +298,20 @@ class HaverTalker(LineOnlyReceiver):
 			names = [ x.name for x in room ]
 			self.sendMsg('LIST', name, ns, *names)
 
-	@state('normal')
+	@phase('normal')
 	def LS(self, ns):
 		house = self.factory.house
 		names = [ x.name for x in house.members(ns) ]
 		self.sendMsg('LS', ns, *names)
 
-	@state('normal')
+	@phase('normal')
 	def USERS(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
 		names = [ x.name for x in room ]
 		self.sendMsg('USERS', *names)
 
-	@state('normal')
+	@phase('normal')
 	def KICK(self, rname, uname):
 		house = self.factory.house
 		room = house.lookup('room', rname)
@@ -323,7 +323,7 @@ class HaverTalker(LineOnlyReceiver):
 		room.sendMsg('PART', room.name, user.name, 'kick', self.user.name)
 		room.remove(user)
 
-	@state('normal')
+	@phase('normal')
 	def SECURE(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
