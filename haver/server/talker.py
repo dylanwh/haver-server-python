@@ -17,21 +17,17 @@ def phase(phase):
 		return func
 	return code
 
-def is_arity_error(f, e):
-	pat = re.compile("^" + f.func_name + '\(\) takes (at least|exactly) (\d+) arguments \((\d+) given\)')
-	return pat.match(e.args[0])
+def check_arity(f, args):
+	arity_max = f.func_code.co_argcount - 1;
+	if f.func_defaults is None:
+		arity_min = arity_max
+		arity_text = str(arity_min)
+	else:
+		arity_min = arity_max - len(f.func_defaults)
+		arity_text = "%d-%d" % (arity_min, arity_max)
 
-
-def catch_arity(f, args):
-	try:
-		return f(*args)
-	except TypeError, e:
-		fix = lambda s: str(int(s) - 1)
-		m = is_arity_error(f, e)
-		if m:
-			raise Fail('arity', m.group(1), fix(m.group(2)), fix(m.group(3)))
-		else:
-			raise e
+	if len(args) > arity_max or len(args) < arity_min:
+		raise Fail('arity', f.__name__, arity_text, str(len(args)))
 
 class HaverFactory(Factory):
 
@@ -52,7 +48,6 @@ class HaverTalker(LineOnlyReceiver):
 		self.cmdpat    = re.compile('^[A-Z][A-Z:_-]*$')
 		self.delimiter = "\n"
 		self.phase     = 'none'
-
 
 		self.lastCmd   = time()
 		self.tardy     = None
@@ -80,7 +75,6 @@ class HaverTalker(LineOnlyReceiver):
 			self.cmd = cmd
 			self.lastCmd = time()
 			method = cmd.replace(':', '_')
-
 			if hasattr(self, method):
 				f = getattr(self, method)
 				if not hasattr(f, 'phase'):
@@ -88,14 +82,15 @@ class HaverTalker(LineOnlyReceiver):
 				if f.phase != self.phase:
 					raise Fail('invalid.command', cmd)
 
-				newstate = catch_arity(f, args)
-				if newstate is not None:
-					self.phase = newstate
+				check_arity(f, args)
+				newphase = f(*args)
+				if newphase is not None:
+					self.phase = newphase
 			else:
 				raise Fail('unknown.command', cmd)
 			
 		except Fail, failure:
-			log.msg('Command %s failed with failure %s' % (self.cmd, failure.name))
+			log.msg('Command %s failed with failure %s (%s)' % (self.cmd, failure.name, str(failure.args)))
 			if self.phase != 'connect':
 				self.sendMsg('FAIL', self.cmd, failure.name, *failure.args)
 			else:
