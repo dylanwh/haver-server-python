@@ -245,7 +245,10 @@ class HaverTalker(LineOnlyReceiver):
 
 	@phase('normal')
 	def BYE(self, detail = None):
-		self.disconnect('bye', detail)
+		if detail is None:
+			self.disconnect('bye')
+		else:
+			self.disconnect('bye', detail)
 
 	@phase('normal')
 	def PONG(self, nonce):
