@@ -120,6 +120,7 @@ class Lobby(Entity):
 	namespace = 'room'
 	name      = '&lobby'
 	users     = property(lambda self: self.house.members('user'))
+	info      = property(lambda self: self.house.info)
 
 	def __init__(self, house):
 		self.house = house
@@ -127,8 +128,6 @@ class Lobby(Entity):
 	def __iter__(self):
 		return iter ( self.users )
 
-	def statInfo(self):
-		return self.house.statInfo()
 
 	def add(self, user):
 		raise Fail('forbidden')

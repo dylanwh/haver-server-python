@@ -283,7 +283,7 @@ class HaverTalker(LineOnlyReceiver):
 	def INFO(self, ns, name):
 		house = self.factory.house
 		entity = house.lookup(ns, name)
-		self.sendMsg('INFO', ns, name, *entity.statInfo())
+		self.sendMsg('INFO', ns, name, *entity.info)
 
 	@state('normal')
 	def LIST(self, name, ns):
