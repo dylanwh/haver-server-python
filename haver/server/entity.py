@@ -59,6 +59,7 @@ class User(Avatar):
 	def __init__(self, name, talker):
 		Avatar.__init__(self, name, talker)
 		self.rooms     = set()
+		self.spoonkey = None
 		self['rooms'] = lambda: ','.join(self.rooms)
 
 	def join(self, name):
@@ -75,6 +76,29 @@ class User(Avatar):
 		else:
 			raise Fail('already.parted', name)
 
+	def attach(self, talker, key):
+		"""Associate a new talker with the Spooner, send the message log, and clear it."""
+		if self.spoonkey != key:
+			raise Fail('mismatch.spoonkey', key)
+		else:
+			msglog, self.msglog = self.msglog, []
+			self.talker = talker
+			for msg in msglog:
+				talker.sendMsg(*msg)
+
+	def detach(self, key):
+		self.talker = None
+		self.msglog = []
+		self.spoonkey = key
+
+	def is_attached(self):
+		return self.talker is not None
+
+	def sendMsg(self, *msg):
+		if self.talker is None:
+			self.msglog.append(msg)
+		else:
+			self.talker.sendMsg(*msg)
 
 
 class Room(Entity):

@@ -115,6 +115,16 @@ class HaverTalker(LineOnlyReceiver):
 		log.msg('Lost client from ' + str(self.addr))
 		self.quit('closed')
 
+	def init(self, user):
+		self.user = user
+		user['address'] = self.addr.host
+		user['version'] = self.version
+		if self.factory.ssl:
+			user['secure'] = 'yes'
+		else:
+			user['secure'] = 'no'
+		del self.version
+
 	def quit(self, why, reason = None):
 		house = self.factory.house
 		
@@ -162,6 +172,27 @@ class HaverTalker(LineOnlyReceiver):
 		return 'login'
 
 	@phase('login')
+	def SPOON_ATTACH(self, name, key):
+		house = self.factory.house
+		assert_name(name)
+		if name[0] == '&' or '@' in name:
+			raise Fail('reserved.name', name)
+
+		user = house.lookup('user', name)
+		if user.is_attached():
+			raise Fail('already.attached')
+		user.attach(self, key)
+
+		self.init(user)
+		return 'normal'
+
+	@phase('normal')
+	def SPOON_DETACH(self, key):
+		self.user.detach(key)
+		self.transport.loseConnection()
+		return 'spoon'
+
+	@phase('login')
 	def IDENT(self, name, *rest):
 		house = self.factory.house
 		assert_name(name)
@@ -171,15 +202,8 @@ class HaverTalker(LineOnlyReceiver):
 		user = User(name, self)
 		house.add(user)
 		self.sendMsg('HELLO', name, str(self.addr.host))
-		self.user = user
-		user['address'] = self.addr.host
-		user['version'] = self.version
-		if self.factory.ssl:
-			user['secure'] = 'yes'
-		else:
-			user['secure'] = 'no'
-		del self.version
 
+		self.init(user)
 		return 'normal'
 
 	@phase('login')
@@ -244,6 +268,7 @@ class HaverTalker(LineOnlyReceiver):
 			self.disconnect('bye')
 		else:
 			self.disconnect('bye', detail)
+
 
 	@phase('normal')
 	def PONG(self, nonce):
