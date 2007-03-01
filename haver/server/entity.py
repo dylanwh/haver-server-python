@@ -83,8 +83,8 @@ class User(Avatar):
 		else:
 			msglog, self.msglog = self.msglog, []
 			self.talker = talker
-			for msg in msglog:
-				talker.sendMsg(*msg)
+			for (t, msg) in msglog:
+				talker.sendMsg('SPOON:AT', time.strftime("%Y/%m/%d %H:%M:%S UTC", time.gmtime(t)), *msg)
 
 	def detach(self, key):
 		self.talker = None
@@ -96,7 +96,7 @@ class User(Avatar):
 
 	def sendMsg(self, *msg):
 		if self.talker is None:
-			self.msglog.append(msg)
+			self.msglog.append((time.time(), msg))
 		else:
 			self.talker.sendMsg(*msg)
 
@@ -125,19 +125,19 @@ class Room(Entity):
 		try:
 			return self.__users[ name.lower() ]
 		except KeyError:
-			raise Fail('unknown.user', name)
+			raise Fail('unknown.entity', 'user', name)
 
 	def add(self, user):
 		name = user.name.lower()
 		if self.__users.has_key(name):
-			raise Fail('exists.user', user.name)
+			raise Fail('existing.entity', 'user', user.name)
 		self.__users[name] = user
 
 	def remove(self, user):
 		try:
 			del self.__users[ user.name.lower() ]
 		except KeyError:
-			raise Fail('unknown.user', user.name)
+			raise Fail('unknown.entity', 'user', user.name)
 
 
 class Lobby(Entity):
@@ -210,14 +210,14 @@ class House(Entity):
 		try:
 			return ents[ name.lower() ]
 		except KeyError:
-			raise Fail('unknown.%s' % ns, name)
+			raise Fail('unknown.entity', ns, name)
 		
 	def add(self, entity):
 		ns, name = (entity.namespace, entity.name.lower())
 		
 		ents = self._get_ns(ns)
 		if ents.has_key(name):
-			raise Fail('exists.%s' % ns, entity.name)
+			raise Fail('existing.entity', ns, entity.name)
 		ents[name] = entity
 		
 	def remove(self, ent):
@@ -228,7 +228,7 @@ class House(Entity):
 		try:
 			del ents[lname]
 		except KeyError:
-			raise Fail('unknown.%s' % ns, name)
+			raise Fail('unknown.entity', ns, name)
 
 	def members(self, ns):
 		ents = self._get_ns(ns)

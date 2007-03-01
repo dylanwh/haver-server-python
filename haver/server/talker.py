@@ -11,11 +11,25 @@ from haver.server.errors import Fail, Bork
 from haver.server.entity import User, Room, assert_name
 import haver.server
 
+
+def exten(name):
+	def code(func):
+		func.extension = name
+		return func
+	return code
+
 def phase(phase):
 	def code(func):
 		func.phase = phase
 		return func
 	return code
+
+def fails(*failures):
+	def code(func):
+		func.failures = failures
+		return func
+	return code
+
 
 def check_arity(f, args):
 	arity_max = f.func_code.co_argcount - 1;
@@ -45,7 +59,7 @@ class HaverFactory(Factory):
 class HaverTalker(LineOnlyReceiver):
 	def __init__(self, addr):
 		self.addr      = addr
-		self.cmdpat    = re.compile('^[A-Z][A-Z:_-]*$')
+		self.cmdpat    = re.compile('^[A-Z][A-Z:]*$')
 		self.delimiter = "\n"
 		self.phase     = 'none'
 
@@ -163,16 +177,18 @@ class HaverTalker(LineOnlyReceiver):
 			self.sendMsg('PING', 'foo')
 			self.tardy = 'foo'
 	
-
 	@phase('connect')
 	def HAVER(self, version, supports = '', *rest):
+		"""Clients must issue this message before any others."""
 		self.version = version
-		self.supports = supports.split(',')
+		self.supports = set(supports.split(','))
 		self.sendMsg('HAVER', self.factory.house.name, "%s/%s" % (haver.server.name, haver.server.version))
 		return 'login'
 
+	@exten('spoon')
 	@phase('login')
 	def SPOON_ATTACH(self, name, key):
+		"""Resume a detached session."""
 		house = self.factory.house
 		assert_name(name)
 		if name[0] == '&' or '@' in name:
@@ -186,14 +202,18 @@ class HaverTalker(LineOnlyReceiver):
 		self.init(user)
 		return 'normal'
 
+	@exten('spoon')
 	@phase('normal')
 	def SPOON_DETACH(self, key):
+		"""Detach session, to be later resumed by SPOON:ATTACH"""
 		self.user.detach(key)
 		self.transport.loseConnection()
 		return 'spoon'
 
 	@phase('login')
-	def IDENT(self, name, *rest):
+	@fails('reserved.name', 'invalid.name', 'existing.entity')
+	def IDENT(self, name):
+		"""Request user name."""
 		house = self.factory.house
 		assert_name(name)
 		if name[0] == '&' or '@' in name:
@@ -206,8 +226,11 @@ class HaverTalker(LineOnlyReceiver):
 		self.init(user)
 		return 'normal'
 
+	@exten('ghost')
 	@phase('login')
+	@fails('reserved.name', 'invalid.name', 'existing.entity', 'mismatch.ip')
 	def GHOST(self, name, *rest):
+		"""Disconnect a stuck nick and login as it."""
 		house = self.factory.house
 		assert_name(name)
 		if name[0] == '&' or '@' in name:
@@ -216,7 +239,7 @@ class HaverTalker(LineOnlyReceiver):
 		try:
 			return self.IDENT(name, *rest)
 		except Fail, f:
-			if f.name == 'exists.user':
+			if f.name == 'existing.entity':
 				user = house.lookup('user', name)
 				if user['address'] != self.addr.host:
 					# TODO: I don't think failure name.
@@ -227,19 +250,25 @@ class HaverTalker(LineOnlyReceiver):
 				raise f
 
 	@phase('normal')
+	@fails('invalid.name', 'unknown.entity')
 	def TO(self, target, kind, msg, *rest):
+		"""Send a private message"""
 		self.user.updateIdle()
 		house = self.factory.house
 		house.lookup('user', target).sendMsg('FROM', self.user.name, kind, msg, *rest)
 
 	@phase('normal')
+	@fails('invalid.name', 'unknown.entity')
 	def IN(self, name, kind, msg, *rest):
+		"""Send a public message"""
 		self.user.updateIdle()
 		house = self.factory.house
 		house.lookup('room', name).sendMsg('IN', name, self.user.name, kind, msg, *rest)
 
 	@phase('normal')
+	@fails('invalid.name', 'unknown.entity', 'already.joined', 'insecure')
 	def JOIN(self, name):
+		"""Join a room"""
 		house = self.factory.house
 		room = house.lookup('room', name)
 		if room['secure'] == 'yes' and self.user['secure'] == 'no':
@@ -255,7 +284,9 @@ class HaverTalker(LineOnlyReceiver):
 		room.sendMsg('JOIN', name, self.user.name)
 
 	@phase('normal')
+	@fails('invalid.name', 'unknown.entity', 'already.parted')
 	def PART(self, name):
+		"""Part a room"""
 		house = self.factory.house
 		room = house.lookup('room', name)
 		self.user.part(name)
@@ -264,6 +295,7 @@ class HaverTalker(LineOnlyReceiver):
 
 	@phase('normal')
 	def BYE(self, detail = None):
+		"""Disconnect from the server"""
 		if detail is None:
 			self.disconnect('bye')
 		else:
@@ -272,24 +304,30 @@ class HaverTalker(LineOnlyReceiver):
 
 	@phase('normal')
 	def PONG(self, nonce):
+		"""Respond to a PING."""
 		if self.tardy is None:
-			raise Bork('You smell like SPAM!')
+			raise Bork("You already did that.")
 		else:
 			self.tardy = None
 
 	@phase('normal')
 	def POKE(self, nonce):
+		"""Hurt the server"""
 		self.sendMsg('OUCH', nonce)
 
 	@phase('normal')
+	@fails('invalid.name', 'existing.entity')
 	def OPEN(self, name):
+		"""Create a new room"""
 		house = self.factory.house
 		room  = Room(name, owner = self.user.name)
 		house.add(room)
 		self.sendMsg('OPEN', name)
 
 	@phase('normal')
+	@fails('invalid.name', 'unknown.entity', 'access.owner')
 	def CLOSE(self, name):
+		"""Destroy a room."""
 		house = self.factory.house
 		room = house.lookup('room', name)
 		if room['owner'] != self.user.name:
@@ -303,13 +341,16 @@ class HaverTalker(LineOnlyReceiver):
 
 
 	@phase('normal')
+	@fails('invalid.namespace', 'unknown.entity', 'access.owner')
 	def INFO(self, ns, name):
+		"""Get a listing of attributes for a particular entity"""
 		house = self.factory.house
 		entity = house.lookup(ns, name)
 		self.sendMsg('INFO', ns, name, *entity.info)
 
 	@phase('normal')
 	def LIST(self, name, ns):
+		"""Deprecated. See LS and USERS"""
 		house = self.factory.house
 		if ns == 'channel':
 			ns = 'room'
@@ -322,12 +363,14 @@ class HaverTalker(LineOnlyReceiver):
 			self.sendMsg('LIST', name, ns, *names)
 
 	@phase('normal')
+	@fails('unknown.namespace')
 	def LS(self, ns):
 		house = self.factory.house
 		names = [ x.name for x in house.members(ns) ]
 		self.sendMsg('LS', ns, *names)
 
 	@phase('normal')
+	@fails('invalid.name', 'unknown.entity')
 	def USERS(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
@@ -335,6 +378,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.sendMsg('USERS', *names)
 
 	@phase('normal')
+	@fails('invalid.name', 'unknown.entity')
 	def KICK(self, rname, uname):
 		house = self.factory.house
 		room = house.lookup('room', rname)
@@ -347,6 +391,7 @@ class HaverTalker(LineOnlyReceiver):
 		room.remove(user)
 
 	@phase('normal')
+	@fails('invalid.name', 'unknown.entity')
 	def SECURE(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
@@ -360,5 +405,3 @@ class HaverTalker(LineOnlyReceiver):
 
 		room['secure'] = 'yes'
 		self.sendMsg('SECURE', name, *names)
-
-
