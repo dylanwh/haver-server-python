@@ -183,6 +183,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.sendMsg('HAVER', self.factory.house.name, ver, ",".join(self.factory.help.extensions))
 		return 'login'
 
+	
 	@command('login', 'spoon')
 	def SPOON_ATTACH(self, name, key):
 		"""Resume a detached session."""
@@ -290,7 +291,7 @@ class HaverTalker(LineOnlyReceiver):
 
 	@command('normal')
 	def BYE(self, detail = None):
-		"""Disconnect from the server"""
+		"""Disconnect from the server. detail must not contain any spaces."""
 		if detail is None:
 			self.disconnect('bye')
 		else:
@@ -298,7 +299,7 @@ class HaverTalker(LineOnlyReceiver):
 
 
 	@command('normal')
-	def PONG(self, nonce):
+	def PONG(self, token):
 		"""Respond to a PING."""
 		if self.tardy is None:
 			raise Bork("You already did that.")
@@ -306,8 +307,8 @@ class HaverTalker(LineOnlyReceiver):
 			self.tardy = None
 
 	@command('normal')
-	def POKE(self, nonce):
-		"""Hurt the server"""
+	def POKE(self, token):
+		"""Hurt the server. Server will respond with OUCH"""
 		self.sendMsg('OUCH', nonce)
 
 	@command('normal')
