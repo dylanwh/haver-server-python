@@ -1,6 +1,5 @@
-import re
+import re, inspect, time
 
-from time import time
 from twisted.python            import log
 from twisted.protocols.basic   import LineOnlyReceiver
 from twisted.internet.protocol import Factory
@@ -11,7 +10,6 @@ from haver.server.errors import Fail, Bork
 from haver.server.entity import User, Room, assert_name
 from haver.server.help   import Help
 import haver.server
-
 
 
 def command(phase, exten = None):
@@ -30,6 +28,7 @@ def failure(*failures):
 
 def check_arity(f, args):
 	arity_max = f.func_code.co_argcount - 1
+
 	if f.func_defaults is None:
 		arity_min = arity_max
 		arity_text = str(arity_min)
@@ -37,8 +36,10 @@ def check_arity(f, args):
 		arity_min = arity_max - len(f.func_defaults)
 		arity_text = "%d-%d" % (arity_min, arity_max)
 
-	if len(args) > arity_max or len(args) < arity_min:
-		raise Fail('arity', f.__name__, arity_text, str(len(args)))
+	catchall = lambda x: inspect.getargspec(x)[2] is None
+
+	if (len(args) > arity_max and catchall(f)) or len(args) < arity_min:
+		raise Fail('arity', arity_text, str(len(args)))
 
 class HaverFactory(Factory):
 
@@ -61,7 +62,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.delimiter = "\n"
 		self.phase     = 'none'
 
-		self.lastCmd   = time()
+		self.lastCmd   = time.time()
 		self.tardy     = None
 		self.pingTime  = 60
 		self.pingLoop  = task.LoopingCall(self.checkPing)
@@ -85,7 +86,7 @@ class HaverTalker(LineOnlyReceiver):
 		try:
 			cmd, args = self.parseLine(line)
 			self.cmd = cmd
-			self.lastCmd = time()
+			self.lastCmd = time.time()
 			method = cmd.replace(':', '_')
 			if hasattr(self, method):
 				f = getattr(self, method)
@@ -158,7 +159,7 @@ class HaverTalker(LineOnlyReceiver):
 
 	def checkPing(self):
 		"""Called every once and a while. Issues a ping if this client hasn't sent a command recently"""
-		now      = time()
+		now      = time.time()
 		duration = int (now - self.lastCmd)
 
 		if self.phase != 'normal':
@@ -309,7 +310,7 @@ class HaverTalker(LineOnlyReceiver):
 	@command('normal')
 	def POKE(self, token):
 		"""Hurt the server. Server will respond with OUCH"""
-		self.sendMsg('OUCH', nonce)
+		self.sendMsg('OUCH', token)
 
 	@command('normal')
 	@failure('invalid.name', 'existing.entity')
@@ -327,7 +328,7 @@ class HaverTalker(LineOnlyReceiver):
 		house = self.factory.house
 		room = house.lookup('room', name)
 		if room['owner'] != self.user.name:
-			raise Fail('access.owner', room['owner'], self.user.name)
+			raise Fail('access.owner', room.name, room['owner'], self.user.name)
 
 		for user in room:
 			user.sendMsg('PART', name, user.name, 'close', self.user.name)
@@ -426,4 +427,8 @@ class HaverTalker(LineOnlyReceiver):
 			self.sendMsg('HELP:COMMAND', cmd, *args)
 		except AttributeError, a:
 			print a
-			raise Fail('unknown.command')
+			raise Fail('unknown.command', cmd)
+
+	@command('normal', 'help')
+	def HELP_FAILURE(self, name, cmd = None, *args):
+		self.sendMsg('HELP:FAILURE', name, self.factory.help.fail(name, cmd, *args))
