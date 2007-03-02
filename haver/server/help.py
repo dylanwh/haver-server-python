@@ -1,38 +1,13 @@
 import inspect
 
 FAILS = {
-	'mismatch.ip': [
-		[],
-		"Your IP address does not match that one associated with this nick",
-	],
-	'insecure': [
-		['room'],
-		"Unable to join secure room from insecure connection",
-	],
-	'access.owner': [
-		['room', 'owner', 'user'],
-		"Access denied to room %(room)s, because owner is %(owner)s and you are %(user)s",
-	],
-	'unknown.command': [
-		['cmd'],
-		"The server did not understand %(cmd)s",
-	],
-	'arity': [
-		['arity', 'argc'],
-		"%(cmd)s has an arity of %(arity)s but was passed %(argc)s arguments.",
-	],
-	'reserved.name': [
-		['name'],
-		"The name %(name)s is reserved by the server",
-	],
-	'already.attached': [
-		[],
-		"The user is already attached",
-	],
-	'undocumented.failure': [
-		['name'],
-		"The failure %(name)s is not documented",
-	],
+	'mismatch.ip': "Your IP address does not match that one associated with this nick",
+	'insecure': "Unable to join secure room from insecure connection",
+	'access.owner': "Access denied to room $1, because owner is $2 and you are $3",
+	'unknown.command': "The server did not understand $1",
+	'arity': "$0 has an arity of $1 but was passed $2 arguments.",
+	'reserved.name': "The name $1 is reserved by the server",
+	'already.attached': "The user is already attached",
 }
 
 class Help(object):
@@ -54,29 +29,9 @@ class Help(object):
 					for x in func.failures:
 						self.failures.add(x)
 
-
-	def fail(self, name, cmd, *args):
+	def fail(self, name):
 		try:
-			fail = FAILS[name]
-			var = dict()
-			if cmd is not None:
-				var['cmd'] = name
-			else:
-				var['cmd'] = '$0'
-
-			if len(args) > 0:
-				for i in xrange(len(args)):
-					try:
-						var[ fail[0][i] ] = args[i]
-					except IndexError:
-						pass
-			else:
-				i = 1
-				for k in fail[0]:
-					var[k] = "$%d" % i
-					i = i + 1
-			
-			return fail[1] % var
+			return FAILS[name]
 		except KeyError:
 			return "undocumented failure: %s" % name
 

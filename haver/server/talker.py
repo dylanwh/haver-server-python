@@ -430,9 +430,8 @@ class HaverTalker(LineOnlyReceiver):
 			raise Fail('unknown.command', cmd)
 
 	@command('normal', 'help')
-	def HELP_FAILURE(self, name, cmd = None, *args):
-		"""Lookup english (or another language) description of FAIL message $name. With args and/or cmd, 
-		   will interpolate values such that the string returned by S: HELP:FAILURE is user-readable.
-		   Without cmd and args, returns a string in which $0 is should be replaced by the command that 
-		   triggered failure and $1..$n should be replaced by the arguments of the failure."""
-		self.sendMsg('HELP:FAILURE', name, self.factory.help.fail(name, cmd, *args))
+	def HELP_FAILURE(self, name):
+		"""The server will respond to this with a string describing the failure $name.
+		The string will contain shell-style argument variables ($0, $1, etc).
+		$0 should be replaced by the command that triggered the failure, and $1..$n should be replaced by the arguments of it."""
+		self.sendMsg('HELP:FAILURE', name, self.factory.help.fail(name))
