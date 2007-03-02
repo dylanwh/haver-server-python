@@ -1,4 +1,6 @@
 
 
 haverdoc.txt: haverdoc.pl gendoc.pl
-	perl haverdoc.pl | perl gendoc.pl > haverdoc.txt
+	twistd -ny haver.tac &  \
+	perl haverdoc.pl | perl gendoc.pl > haverdoc.txt; \
+	kill `cat twistd.pid`

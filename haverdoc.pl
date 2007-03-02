@@ -5,7 +5,17 @@ use IO::Socket;
 use YAML;
 
 my (@commands, @extensions, @failures);
-my $sock = new IO::Socket::INET(PeerAddr => 'localhost:7575') or die "Can't connect\n";
+my $sock;
+
+for (1 .. 100) {
+	$sock = new IO::Socket::INET(PeerAddr => 'localhost:7575');
+	if ($sock) {
+		last;
+	}
+	sleep 10;
+}
+die "Unable to connect!\n" unless $sock;
+
 $sock->print("HAVER\thaverdoc\r\n");
 $sock->print("IDENT\thaverdoc$$\r\n");
 $sock->print("HELP:COMMANDS\r\n");
