@@ -386,7 +386,9 @@ class HaverTalker(LineOnlyReceiver):
 		room.remove(user)
 
 	@command('normal')
+	@failure('unknown.entity', 'invalid.name')
 	def SECURE(self, name):
+
 		house = self.factory.house
 		room = house.lookup('room', name)
 		names = []
@@ -403,7 +405,8 @@ class HaverTalker(LineOnlyReceiver):
 
 	@command('normal', 'help')
 	def HELP_COMMANDS(self):
-		self.sendMsg('HELP:COMMANDS', *self.factory.help.commands)
+		commands = [ x.replace('_', ':') for x in self.factory.help.commands ]
+		self.sendMsg('HELP:COMMANDS', *commands)
 
 	@command('normal', 'help')
 	def HELP_FAILURES(self):
