@@ -10,7 +10,7 @@ from haver.server.errors import Fail, Bork
 from haver.server.entity import User, Room, assert_name
 from haver.server.help   import Help
 import haver.server
-
+import haver.protocol
 
 def command(phase, exten = None):
 	def code(func):
@@ -73,7 +73,7 @@ class HaverTalker(LineOnlyReceiver):
 			print "Got empty line"
 			raise Bork('Your line is empty')
 
-		msg = line.rstrip("\r").split("\t")
+		msg = haver.protocol.parse(line.rstrip("\r"))
 
 		if not self.cmdpat.match(msg[0]):
 			print "This is an example of a badly formed command: %s" % msg[0]
@@ -116,8 +116,7 @@ class HaverTalker(LineOnlyReceiver):
 			self.disconnect('bork')
 
 	def sendMsg(self, *msg):
-		self.sendLine("\t".join(msg) + "\r")
-	
+		self.sendLine(haver.protocol.deparse(msg) + "\r")
 	
 	def connectionMade(self):
 		self.phase = 'connect'
