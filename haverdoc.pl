@@ -56,6 +56,17 @@ foreach my $cmd (@commands) {
 	}
 }
 
+my %failures;
+foreach my $fail (@failures) {
+	warn "Querying $fail\n";
+	$sock->print("HELP:FAILURE\t$fail\n");
+	my ($cmd, $fail, $desc) = parse($sock->getline);
+	if ($cmd eq 'HELP:FAILURE') {
+		$failures{$fail} = $desc;
+	} else {
+		die "WTF? $cmd\n";
+	}
+}
 
 print Dump({
 		lists => {
@@ -64,6 +75,7 @@ print Dump({
 			extension => \@extensions,
 		},
 		commands => \%commands,
+		failures => \%failures,
 	});
 
 
