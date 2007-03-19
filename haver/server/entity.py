@@ -25,7 +25,10 @@ class Entity(object):
 		self.__info = dict()
 
 	def __getitem__(self, key):
-		return self.__info[key]
+		try:
+			return self.__info[key]
+		except KeyError:
+			raise Fail('unknown.attribute', self.namespace, self.name, key)
 
 	def __setitem__(self, key, val):
 		self.__info[key] = val
@@ -152,6 +155,12 @@ class Lobby(Entity):
 	def __iter__(self):
 		return iter ( self.users )
 
+	def __getitem__(self, key):
+		return self.house[key]
+
+	def __setitem__(self, key, val):
+		self.house[key] = val
+		return self.house[key]
 
 	def add(self, user):
 		raise Fail('forbidden')
@@ -162,6 +171,9 @@ class Lobby(Entity):
 	def lookup(self, name):
 		raise Fail('forbidden')
 
+	def sendMsg(self, *msg):
+		raise Fail('forbidden')
+	
 
 class Root(User):
 	namespace = 'user'
@@ -193,7 +205,8 @@ class House(Entity):
 
 		self.__users = dict()
 		self.__members = dict(user = {}, room = {}, ghost = {})
-		
+	
+
 	def sendMsg(self, *msg):
 		for user in self.members('user'):
 			user.sendMsg(*msg)

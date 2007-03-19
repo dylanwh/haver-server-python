@@ -267,6 +267,8 @@ class HaverTalker(LineOnlyReceiver):
 		"""Join a room"""
 		house = self.factory.house
 		room = house.lookup('room', name)
+		if name == '&lobby':
+			raise Fail('already.joined')
 		if room['secure'] == 'yes' and self.user['secure'] == 'no':
 			raise Fail('insecure', name)
 
