@@ -251,7 +251,7 @@ class HaverTalker(LineOnlyReceiver):
 		"""Send a private message"""
 		self.user.updateIdle()
 		house = self.factory.house
-		house.lookup('user', target).sendMsg('FROM', self.user.name, type, msg, *rest)
+		house.sendMsg('user', target, ['FROM', self.user.name, type, msg] + rest)
 
 	@command('normal')
 	@failure('invalid.name', 'unknown.entity')
@@ -259,37 +259,21 @@ class HaverTalker(LineOnlyReceiver):
 		"""Send a public message"""
 		self.user.updateIdle()
 		house = self.factory.house
-		house.lookup('room', name).sendMsg('IN', name, self.user.name, type, msg, *rest)
+		house.sendMsg('room', name, ['IN', name, self.user.name, type, msg] + rest)
 
 	@command('normal')
 	@failure('invalid.name', 'unknown.entity', 'already.joined', 'insecure')
 	def JOIN(self, name):
 		"""Join a room"""
 		house = self.factory.house
-		room = house.lookup('room', name)
-		if name == '&lobby':
-			raise Fail('already.joined')
-		if room['secure'] == 'yes' and self.user['secure'] == 'no':
-			raise Fail('insecure', name)
-
-		self.user.join(name)
-		try:
-			room.add(self.user)
-		except Fail, f:
-			self.user.part(name)
-			raise f
-
-		room.sendMsg('JOIN', name, self.user.name)
+		house.join(self.user.name, name)
 
 	@command('normal')
 	@failure('invalid.name', 'unknown.entity', 'already.parted')
 	def PART(self, name):
 		"""Part a room"""
 		house = self.factory.house
-		room = house.lookup('room', name)
-		self.user.part(name)
-		room.sendMsg('PART', name, self.user.name)
-		room.remove(self.user)
+		house.part(self.user.name, name)
 
 	@command('normal')
 	def BYE(self, detail = None):
