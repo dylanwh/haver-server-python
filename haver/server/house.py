@@ -1,51 +1,38 @@
 from haver.server.errors import Fail, Bork
+from haver.server.thing import assert_name, assert_ns
 
-class House(object):
+class House(set):
 	def __init__(self, host):
-		self.host = host
-		self.__entities = dict(user = {}, room = {}, soul = {})
-		self.__joined  = set()
+		self.host      = host
+		self.__members = dict()
 	
-	def __fetch(self, ns):
-		try:
-			return self.__members[ns]
-		except KeyError:
-			raise Fail('invalid.namespace', ns)
-
 	def lookup(self, ns, name):
+		assert_ns(ns)
 		assert_name(name)
-		ents = self.__fetch(ns)
+
 		try:
-			return ents[ name.lower() ]
+			return things[ name.lower() ]
 		except KeyError:
-			raise Fail('unknown.entity', ns, name)
+			raise Fail('unknown.thing', ns, name)
 		
-	def add(self, entity):
-		ns, name = (entity.namespace, entity.name.lower())
+	def add(self, thing):
+		ns, name = (thing.namespace, thing.name.lower())
 		
-		ents = self.__fetch(ns)
-		if ents.has_key(name):
-			raise Fail('existing.entity', ns, entity.name)
-		ents[name] = entity
+		things = self
+		if things.has_key(name):
+			raise Fail('existing.thing', ns, thing.name)
+		things[name] = thing
 		
-	def remove(self, ent):
-		ns    = ent.namespace
-		name  = ent.name
-		lname = name.lower()
-		ents  = self.__fetch(ns)
+	def remove(self, thing):
+		ns       = thing.namespace
+		name     = thing.name
+		lname    = name.lower()
+		things = self.__fetch(ns)
 		try:
-			del ents[lname]
+			del things[lname]
 		except KeyError:
-			raise Fail('unknown.entity', ns, name)
+			raise Fail('unknown.thing', ns, name)
 
 	def members(self, ns):
-		ents = self.__fetch(ns)
-		return ents.values()
-
-
-	def join(self, uname, rname):
-		pair = (uname, rname)
-		if pair in self.__joined:
-			raise Fail('already.joined')
-		else:
-			self.__joined
+		assert_ns(ns)
+		return things.values()

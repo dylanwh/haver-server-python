@@ -7,7 +7,7 @@ from twisted.internet          import reactor
 from twisted.internet          import task
 
 from haver.server.errors import Fail, Bork
-from haver.server.entity import User, Room, assert_name
+from haver.server.thing import User, Room, assert_name
 from haver.server.help   import Help
 import haver.server
 import haver.protocol
@@ -208,7 +208,7 @@ class HaverTalker(LineOnlyReceiver):
 		return 'spoon'
 
 	@command('login')
-	@failure('reserved.name', 'invalid.name', 'existing.entity')
+	@failure('reserved.name', 'invalid.name', 'existing.thing')
 	def IDENT(self, name):
 		"""Request user name."""
 		house = self.factory.house
@@ -224,7 +224,7 @@ class HaverTalker(LineOnlyReceiver):
 		return 'normal'
 
 	@command('login', 'ghost')
-	@failure('reserved.name', 'invalid.name', 'existing.entity', 'mismatch.ip')
+	@failure('reserved.name', 'invalid.name', 'existing.thing', 'mismatch.ip')
 	def GHOST(self, name, *rest):
 		"""Disconnect a stuck nick and login as it."""
 		house = self.factory.house
@@ -235,7 +235,7 @@ class HaverTalker(LineOnlyReceiver):
 		try:
 			return self.IDENT(name, *rest)
 		except Fail, f:
-			if f.name == 'existing.entity':
+			if f.name == 'existing.thing':
 				user = house.lookup('user', name)
 				if user['address'] != self.addr.host:
 					# TODO: I don't think failure name.
@@ -246,7 +246,7 @@ class HaverTalker(LineOnlyReceiver):
 				raise f
 
 	@command('normal')
-	@failure('invalid.name', 'unknown.entity')
+	@failure('invalid.name', 'unknown.thing')
 	def TO(self, target, type, msg, *rest):
 		"""Send a private message"""
 		self.user.updateIdle()
@@ -254,7 +254,7 @@ class HaverTalker(LineOnlyReceiver):
 		house.sendMsg('user', target, ['FROM', self.user.name, type, msg] + rest)
 
 	@command('normal')
-	@failure('invalid.name', 'unknown.entity')
+	@failure('invalid.name', 'unknown.thing')
 	def IN(self, name, type, msg, *rest):
 		"""Send a public message"""
 		self.user.updateIdle()
@@ -262,14 +262,14 @@ class HaverTalker(LineOnlyReceiver):
 		house.sendMsg('room', name, ['IN', name, self.user.name, type, msg] + rest)
 
 	@command('normal')
-	@failure('invalid.name', 'unknown.entity', 'already.joined', 'insecure')
+	@failure('invalid.name', 'unknown.thing', 'already.joined', 'insecure')
 	def JOIN(self, name):
 		"""Join a room"""
 		house = self.factory.house
 		house.join(self.user.name, name)
 
 	@command('normal')
-	@failure('invalid.name', 'unknown.entity', 'already.parted')
+	@failure('invalid.name', 'unknown.thing', 'already.parted')
 	def PART(self, name):
 		"""Part a room"""
 		house = self.factory.house
@@ -298,7 +298,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.sendMsg('OUCH', token)
 
 	@command('normal')
-	@failure('invalid.name', 'existing.entity')
+	@failure('invalid.name', 'existing.thing')
 	def OPEN(self, name):
 		"""Create a new room"""
 		house = self.factory.house
@@ -307,7 +307,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.sendMsg('OPEN', name)
 
 	@command('normal')
-	@failure('invalid.name', 'unknown.entity', 'access.owner')
+	@failure('invalid.name', 'unknown.thing', 'access.owner')
 	def CLOSE(self, name):
 		"""Destroy a room."""
 		house = self.factory.house
@@ -323,12 +323,12 @@ class HaverTalker(LineOnlyReceiver):
 
 
 	@command('normal')
-	@failure('invalid.namespace', 'unknown.entity', 'access.owner')
+	@failure('invalid.namespace', 'unknown.thing', 'access.owner')
 	def INFO(self, ns, name):
-		"""Get a listing of attributes for a particular entity"""
+		"""Get a listing of attributes for a particular thing"""
 		house = self.factory.house
-		entity = house.lookup(ns, name)
-		self.sendMsg('INFO', ns, name, *entity.info)
+		thing = house.lookup(ns, name)
+		self.sendMsg('INFO', ns, name, *thing.info)
 
 	@command('normal')
 	def LIST(self, name, ns):
@@ -352,7 +352,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.sendMsg('LS', ns, *names)
 
 	@command('normal')
-	@failure('invalid.name', 'unknown.entity')
+	@failure('invalid.name', 'unknown.thing')
 	def USERS(self, name):
 		house = self.factory.house
 		room = house.lookup('room', name)
@@ -360,7 +360,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.sendMsg('USERS', *names)
 
 	@command('normal')
-	@failure('invalid.name', 'unknown.entity')
+	@failure('invalid.name', 'unknown.thing')
 	def KICK(self, rname, uname):
 		house = self.factory.house
 		room = house.lookup('room', rname)
@@ -373,7 +373,7 @@ class HaverTalker(LineOnlyReceiver):
 		room.remove(user)
 
 	@command('normal')
-	@failure('unknown.entity', 'invalid.name')
+	@failure('unknown.thing', 'invalid.name')
 	def SECURE(self, name):
 
 		house = self.factory.house

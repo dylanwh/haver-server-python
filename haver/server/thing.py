@@ -3,10 +3,23 @@ import time, re
 
 namepattern = re.compile("^&?[A-Za-z][A-Za-z0-9_.'\@-]+$")
 
-class Entity(object):
-	info = property(lambda self: flatten( self.__info.items() ) )
-	name = property(lambda self: self.__name)
+def assert_name(n):
+	if not namepattern.match(n):
+		raise Fail('invalid.name', n)
 
+def assert_ns(n):
+	if n not in ['soul', 'user', 'room']:
+		raise Fail('unknown.namespace', n)
+
+def val(x):
+	try:
+		return str(x())
+	except TypeError:
+		return str(x)
+
+class Thing(object):
+	name = property(lambda self: self.__name)
+	
 	def __init__(self, name):
 		assert_name(name)
 		self.__name = name
@@ -14,7 +27,7 @@ class Entity(object):
 
 	def __getitem__(self, key):
 		try:
-			return self.__info[key]
+			return val(self.__info[key])
 		except KeyError:
 			raise Fail('unknown.attribute', self.namespace, self.name, key)
 
@@ -22,38 +35,26 @@ class Entity(object):
 		self.__info[key] = val
 		return self.__info[key]
 
-class User(Entity):
+	def info(self):
+		for (x, y) in self.__info.iteritems():
+			yield x
+			yield val(y)
+
+class User(Thing):
 	namespace = 'user'
 
 	def __init__(self, name):
-		Entity.__init__(self, name)
+		Thing.__init__(self, name)
 		self.idleTime  = time.time()
-		#self['rooms']  = lambda: ','.join(self.rooms)
-		self['idle']   = self.getIdle
+		self['idle']   = lambda: int (time.time() - self.idleTime)
 
 	def updateIdle(self):
 		self.idleTime = time.time()
 
-	def getIdle(self):
-		return int (time.time() - self.idleTime)
-
-class Room(Entity):
+class Room(Thing):
 	namespace = 'room'
 
 	def __init__(self, name, owner = '&root'):
-		Entity.__init__(self, name)
+		Thing.__init__(self, name)
 		self['owner']  = owner
-		#self['users']  = len(self.users)
 		self['secure'] = 'no'
-
-def assert_name(n):
-	if not namepattern.match(n):
-		raise Fail('invalid.name', n)
-
-def flatten(tuples):
-	for (key, value) in tuples:
-		yield key
-		try:
-			yield str(value())
-		except TypeError:
-			yield str(value)
