@@ -1,15 +1,6 @@
 from haver.server.errors import Fail, Bork
+from haver.server.asserts import assert_cmd, assert_ns, assert_name
 import time, re
-
-namepattern = re.compile("^&?[A-Za-z][A-Za-z0-9_.'\@-]+$")
-
-def assert_name(n):
-	if not namepattern.match(n):
-		raise Fail('invalid.name', n)
-
-def assert_ns(n):
-	if n not in ['soul', 'user', 'room']:
-		raise Fail('unknown.namespace', n)
 
 def val(x):
 	try:

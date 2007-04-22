@@ -1,5 +1,6 @@
 import re
 
+
 escmap = {
 	"\r": "r",
 	"\x1b": "e",
