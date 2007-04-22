@@ -1,24 +1,24 @@
 from haver.server.errors import Fail, Bork
-from haver.server.thing import assert_name, assert_ns
+from haver.server.asserts import assert_name, assert_ns
 
 class House(set):
 	def __init__(self, host):
 		self.host      = host
-		self.__members = dict()
+		self.__things = dict()
+
+	def lookup_namespace(self, ns):
+		return self.__things.setdefault(ns, dict())
 	
 	def lookup(self, ns, name):
-		assert_ns(ns)
-		assert_name(name)
-
+		things = self.lookup_namespace(ns)
 		try:
 			return things[ name.lower() ]
 		except KeyError:
 			raise Fail('unknown.thing', ns, name)
-		
+	
 	def add(self, thing):
 		ns, name = (thing.namespace, thing.name.lower())
-		
-		things = self
+		things = self.lookup_namespace(ns)
 		if things.has_key(name):
 			raise Fail('existing.thing', ns, thing.name)
 		things[name] = thing
@@ -27,12 +27,11 @@ class House(set):
 		ns       = thing.namespace
 		name     = thing.name
 		lname    = name.lower()
-		things = self.__fetch(ns)
+		things = self.lookup_namespace(ns)
 		try:
 			del things[lname]
 		except KeyError:
 			raise Fail('unknown.thing', ns, name)
 
-	def members(self, ns):
-		assert_ns(ns)
+	def things(self, ns):
 		return things.values()

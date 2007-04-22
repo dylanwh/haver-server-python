@@ -18,9 +18,11 @@ unescmap = {
 unescpat = re.compile('\x1b([rent])')
 
 def parse(s):
-	return map(unescape, s.split("\t"))
+	msg = map(unescape, s.split("\t"))
+	return (msg[0], msg[1:])
 
-def deparse(msg):
+def deparse(cmd, args):
+	msg = [cmd] + list(args)
 	return "\t".join(map(escape, msg))
 
 def escape(s):

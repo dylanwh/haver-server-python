@@ -1,5 +1,5 @@
 from haver.server.errors import Fail, Bork
-import re
+import re, inspect
 namepattern = re.compile("^&?[A-Za-z][A-Za-z0-9_.'\@-]+$")
 cmdpattern  = re.compile('^[A-Z][A-Z:]*$')
 
@@ -8,7 +8,7 @@ def assert_name(n):
 		raise Fail('invalid.name', n)
 
 def assert_name_unreserved(n):
-	if name['&'] or '@' in name:
+	if n[0] == '&' or '@' in n:
 		raise Fail('reserved.name')
 
 def assert_ns(n):

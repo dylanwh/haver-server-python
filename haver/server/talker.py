@@ -1,15 +1,18 @@
-import re, inspect, time
+import time
 from twisted.python            import log
 from twisted.protocols.basic   import LineOnlyReceiver
 from twisted.internet.protocol import Factory
 from twisted.internet          import reactor
 from twisted.internet          import task
 
-from haver.server.errors import Fail, Bork
-from haver.server.thing import User, Room, assert_name
-from haver.server.help   import Help
+from haver.server.errors  import Fail, Bork
+from haver.server.thing   import User, Room
+from haver.server.asserts import *
+from haver.server.help    import Help
 import haver.server
 import haver.protocol
+
+assert hasattr(Room, 'join')
 
 def command(phase, exten = None):
 	def code(func):
@@ -86,8 +89,8 @@ class HaverTalker(LineOnlyReceiver):
 				self.sendMsg('BORK', bork.msg)
 			self.disconnect('bork')
 
-	def sendMsg(self, *msg):
-		self.sendLine(haver.protocol.deparse(msg) + "\r")
+	def sendMsg(self, cmd, *args):
+		self.sendLine(haver.protocol.deparse(cmd, args) + "\r")
 	
 	def connectionMade(self):
 		self.phase = 'connect'
@@ -111,13 +114,11 @@ class HaverTalker(LineOnlyReceiver):
 		house = self.factory.house
 		
 		if self.phase == 'normal':
-			for name in self.user.rooms:
+			for name in list(self.user.rooms):
 				room = house.lookup('room', name)
-				room.remove(self.user)
-				if reason is None:
-					room.sendMsg('PART', name, self.user.name, 'quit', why)
-				else:
-					room.sendMsg('PART', name, self.user.name, "%s: %s" % (why, reason))
+				if reason is not None:
+					why = "%s: %s" % (why, reason)
+				room.part(self.user, 'quit', why)
 
 			house.remove(self.user)
 			self.phase = 'quit'
@@ -151,7 +152,7 @@ class HaverTalker(LineOnlyReceiver):
 		self.version = version
 		self.extensions = set(extensions.split(','))
 		ver = "%s/%s" % (haver.server.name, haver.server.version)
-		self.sendMsg('HAVER', self.factory.house.name, ver, ",".join(self.factory.help.extensions))
+		self.sendMsg('HAVER', self.factory.house.host, ver, ",".join(self.factory.help.extensions))
 		return 'login'
 
 	@command('login')
@@ -160,6 +161,7 @@ class HaverTalker(LineOnlyReceiver):
 		"""Request user name."""
 		house = self.factory.house
 		assert_name(name)
+		assert_name_unreserved(name)
 		user = User(name, self)
 		house.add(user)
 		self.sendMsg('HELLO', name, str(self.addr.host))
@@ -171,12 +173,12 @@ class HaverTalker(LineOnlyReceiver):
 	@failure('reserved.name', 'invalid.name', 'existing.thing', 'mismatch.ip')
 	def GHOST(self, name, *rest):
 		"""Disconnect a stuck nick and login as it."""
-		house = self.factory.house
 		try:
-			return self.IDENT(name, *rest)
+			return self.IDENT(name)
 		except Fail, f:
 			if f.name == 'existing.thing':
-				user = house.lookup('user', name)
+				house = self.factory.house
+				user  = house.lookup('user', name)
 				if user['address'] != self.addr.host:
 					# TODO: I don't think failure name.
 					raise Fail('mismatch.ip')
@@ -187,33 +189,43 @@ class HaverTalker(LineOnlyReceiver):
 
 	@command('normal')
 	@failure('invalid.name', 'unknown.thing')
-	def TO(self, target, type, msg, *rest):
+	def TO(self, name, kind, msg, *rest):
 		"""Send a private message"""
-		self.user.updateIdle()
+		assert_name(name)
 		house = self.factory.house
-		house.sendMsg('user', target, ['FROM', self.user.name, type, msg] + rest)
+		user  = house.lookup('user', name)
+		user.sendMsg('FROM', self.user.name, kind, msg, *rest)
+		self.user.updateIdle()
 
 	@command('normal')
 	@failure('invalid.name', 'unknown.thing')
-	def IN(self, name, type, msg, *rest):
+	def IN(self, name, kind, msg, *rest):
 		"""Send a public message"""
-		self.user.updateIdle()
+		assert_name(name)
 		house = self.factory.house
-		house.sendMsg('room', name, ['IN', name, self.user.name, type, msg] + rest)
+		room  = house.lookup('room', name)
+		room.sendMsg('IN', room.name, self.user.name, kind, msg, *rest)
+		self.user.updateIdle()
 
 	@command('normal')
 	@failure('invalid.name', 'unknown.thing', 'strange.join', 'insecure')
 	def JOIN(self, name):
-		"""Join a room"""
+		"""Join room {name}"""
+		assert_name(name)
 		house = self.factory.house
-		house.join(self.user.name, name)
+		room  = house.lookup('room', name)
+		if room['secure'] == 'yes' and self.user['secure'] != 'yes':
+			raise Fail('insecure')
+		room.join(self.user)
 
 	@command('normal')
 	@failure('invalid.name', 'unknown.thing', 'strange.part')
 	def PART(self, name):
-		"""Part a room"""
+		"""Part room {name}"""
+		assert_name(name)
 		house = self.factory.house
-		house.part(self.user.name, name)
+		room  = house.lookup('room', name)
+		room.part(self.user, 'normal')
 
 	@command('normal')
 	def BYE(self, detail = None):
@@ -240,6 +252,9 @@ class HaverTalker(LineOnlyReceiver):
 	@failure('invalid.name', 'existing.thing', 'reserved.name')
 	def OPEN(self, name):
 		"""Create a new room"""
+		assert_name(name)
+		assert_name_unreserved(name)
+
 		house = self.factory.house
 		room  = Room(name, owner = self.user.name)
 		house.add(room)
@@ -249,32 +264,34 @@ class HaverTalker(LineOnlyReceiver):
 	@failure('invalid.name', 'unknown.thing', 'access.owner')
 	def CLOSE(self, name):
 		"""Destroy a room."""
+		assert_name(name)
+		assert_name_unreserved(name)
+
 		house = self.factory.house
 		room = house.lookup('room', name)
 		if room['owner'] != self.user.name:
 			raise Fail('access.owner', room.name, room['owner'], self.user.name)
 
 		for user in room:
-			user.sendMsg('PART', name, user.name, 'close', self.user.name)
-			user.part(room.name)
+			user.part(room.name, 'close', self.user.name)
 		house.remove(room)
 		self.sendMsg('CLOSE', name)
 
 	@command('normal')
 	@failure('unknown.namespace', 'unknown.thing')
 	def INFO(self, ns, name):
-		"""Get a listing of attributes for a particular thing"""
+		"""Get a listing of information for a particular thing"""
 		house = self.factory.house
 		thing = house.lookup(ns, name)
-		self.sendMsg('INFO', ns, name, *thing.info)
+		self.sendMsg('INFO', ns, name, *thing.info())
 
 	@command('normal')
 	@failure('unknown.namespace')
 	def LIST(self, ns):
 		"""Return a list of things in the namespace $ns"""
 		house = self.factory.house
-		names = [ x.name for x in house.members(ns) ]
-		self.sendMsg('LS', ns, *names)
+		names = [ x.name for x in house.things(ns) ]
+		self.sendMsg('LIST', ns, *names)
 
 	@command('normal')
 	@failure('invalid.name', 'unknown.thing')
@@ -293,22 +310,17 @@ class HaverTalker(LineOnlyReceiver):
 		if room['owner'] != self.user.name:
 			raise Fail('access.owner', room['owner'], self.user.name)
 
-		user.part(rname)
-		room.sendMsg('PART', room.name, user.name, 'kick', self.user.name)
-		room.remove(user)
+		room.part(user, 'kick', self.user.name)
 
 	@command('normal')
 	@failure('unknown.thing', 'invalid.name')
 	def SECURE(self, name):
-
 		house = self.factory.house
 		room = house.lookup('room', name)
 		names = []
-		for user in room:
+		for user in room.users:
 			if user['secure'] == 'no':
-				user.part(name)
-				room.sendMsg('PART', room.name, user.name, 'secure', self.user.name)
-				room.remove(user)
+				room.part(user, 'secure', self.user.name)
 				names.append(user.name)
 
 		room['secure'] = 'yes'
@@ -343,4 +355,4 @@ class HaverTalker(LineOnlyReceiver):
 		"""The server will respond to this with a string describing the failure $name.
 		The string will contain shell-style argument variables ($0, $1, etc).
 		$0 should be replaced by the command that triggered the failure, and $1..$n should be replaced by the arguments of it."""
-		self.sendMsg('HELP:FAILURE', name, self.factory.help.fail(name))
+		self.sendMsg('HELP:FAILURE', name, *self.factory.help.fail(name))

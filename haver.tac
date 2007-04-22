@@ -1,6 +1,7 @@
 #!/usr/bin/python2.4
 from haver.server.talker import HaverFactory
-from haver.server.entity import House, Room, Echo, Lobby, Root
+from haver.server.thing  import Room #, Echo, Lobby, Root
+from haver.server.house  import House
 from haver.server.ssl    import SSLContextFactory
 
 from twisted.application import service, internet
@@ -13,7 +14,8 @@ service      = service.IService(application)
 applicationper = sob.IPersistable(application)
 
 house = House('odin.hardison.net')
-ents  = [ Lobby(house), Room('main'), Room('lobby'), Echo(house), Root() ]
+#ents  = [ Lobby(house), Room('main'), Room('lobby'), Echo(house), Root() ]
+ents  = [ Room('main'), Room('lobby') ]
 for e in ents:
 	house.add(e)
 
