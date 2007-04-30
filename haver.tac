@@ -1,5 +1,6 @@
 #!/usr/bin/python2.4
-from haver.server.talker import HaverFactory
+from haver.server.talker     import HaverFactory
+from haver.server.irctalker import IRCFactory
 from haver.server.thing  import Room #, Echo, Lobby, Root
 from haver.server.house  import House
 from haver.server.ssl    import SSLContextFactory
@@ -19,8 +20,10 @@ ents  = [ Room('main'), Room('lobby') ]
 for e in ents:
 	house.add(e)
 
+
 servers = [
 	internet.TCPServer(7575, HaverFactory(house)),
+	internet.TCPServer(7666, IRCFactory(house)),
 	internet.SSLServer(7474, HaverFactory(house, ssl = True), SSLContextFactory())
 ]
 # Tie the service to the application

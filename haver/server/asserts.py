@@ -1,6 +1,6 @@
 from haver.server.errors import Fail, Bork
 import re, inspect
-namepattern = re.compile("^&?[A-Za-z][A-Za-z0-9_.'\@-]+$")
+namepattern = re.compile("^&?[A-Za-z][A-Za-z0-9_.'`\[\]{}^\|\\\@-]+$")
 cmdpattern  = re.compile('^[A-Z][A-Z:]*$')
 
 def assert_name(n):

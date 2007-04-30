@@ -34,4 +34,18 @@ class House(set):
 			raise Fail('unknown.thing', ns, name)
 
 	def things(self, ns):
-		return things.values()
+		return self.things.values()
+
+	def genname(self, root = 'random'):
+		users = self.lookup_namespace('user')
+		name = root
+		i    = 1
+		while True:
+			if name in users:
+				name = root + str(i)
+				i    = i + 1
+			else:
+				break
+		return name
+
+
