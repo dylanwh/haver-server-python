@@ -13,6 +13,22 @@ badchars = re.compile('[\[\[\\\|\`\^#]')
 def purify(s):
 	return re.sub(badchars, '', s)
 
+def parsemsg(s):
+    """Breaks a message from an IRC server into its prefix, command, and arguments.
+    """
+    prefix = ''
+    trailing = []
+    assert s
+    if s[0] == ':':
+        prefix, s = s[1:].split(' ', 1)
+    if s.find(' :') != -1:
+        s, trailing = s.split(' :', 1)
+        args = s.split()
+        args.append(trailing)
+    else:
+        args = s.split()
+    command = args.pop(0)
+    return prefix, command, args
 
 class IRCFactory(Factory):
 
@@ -41,15 +57,14 @@ class IRCTalker(LineOnlyReceiver):
 	def lineReceived(self, line):
 		log.msg('C: ' + line.rstrip("\r"))
 		try:
-			cmd, arg = line.rstrip("\r").split(' ', 1)
+			prefix, cmd, args = parsemsg(line.rstrip("\r"))
 			self.cmd = cmd
 			try:
 				f = getattr(self, "C_" + cmd)
 			except AttributeError:
 				log.msg('FIXME: C_' + cmd)
 				return
-			f(arg)
-
+			f(*args)
 		except Fail, failure:
 			log.msg('Command %s failed with failure %s (%s)' % (self.cmd, failure.name, str(failure.args)))
 			self.sendMsg('FAIL', self.cmd, failure.name, *failure.args)
@@ -143,14 +158,14 @@ class IRCTalker(LineOnlyReceiver):
 	def irc_init(self):
 		house = self.factory.house
 		log.msg('irc init')
-		nick, info = ('', dict())
+		name, info = ('', dict())
 		try:
-			nick, info = self.nick, self.info
-			del self.nick
+			name, info = self.name, self.info
+			del self.name
 			del self.info
 		except AttributeError, e:
 			return
-		name = house.genname(root = nick)
+		name = house.genname(root = name)
 		user = User(name, self)
 		self.user = user
 		user['address'] = self.addr.host
@@ -162,34 +177,34 @@ class IRCTalker(LineOnlyReceiver):
 			user['secure'] = 'no'
 		
 		house.add(user)
-		self.sendRaw(':haver NOTICE %s :*** You will be known as %s' % (nick, nick))
-		self.sendRaw(':haver 001 %s :Welcome to the strange and perverse world of haver!' % nick)
+		self.sendRaw(':haver NOTICE %s :*** You will be known as %s' % (name, name))
+		self.sendRaw(':haver 001 %s :Welcome to the strange and perverse world of haver!' % name)
 
-	def C_NICK(self, nick):
+	def C_NICK(self, name, *rest):
 		log.msg('got NICK')
-		house = self.factory.house
-		assert_name_unreserved(nick)
-		self.nick = nick
-		self.irc_init()
+		if hasattr(self, 'name') or hasattr(self, 'user'):
+			pass
+		else:
+			house = self.factory.house
+			assert_name_unreserved(name)
+			self.name = name
+			self.irc_init()
 
-	def C_USER(self, s):
+	def C_USER(self, user, host, server, real, *rest):
 		log.msg('got USER')
 		house = self.factory.house
-		# <username> <hostname> <servername> <realname>
-		m = re.match(re.compile('([^ ]+) ([^ ]+) ([^ ]+) :?(.+)'), s)
-		assert m, "can parse %s" % s
 		self.info = dict(
-				username   = m.group(1),
-				hostname   = m.group(2),
-				servername = m.group(3),
-				realname = m.group(4),
+				username   = user,
+				hostname   = host,
+				servername = server,
+				realname   = real,
 		)
 		self.irc_init()
 
-	def C_PING(self, s):
+	def C_PING(self, s, *rest):
 		self.sendRaw(':haver PONG haver :' + s)
 
-	def C_JOIN(self, name):
+	def C_JOIN(self, name, *rest):
 		house = self.factory.house
 		name = name[1:]
 		room = house.lookup('room', name)
