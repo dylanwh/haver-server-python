@@ -176,7 +176,7 @@ class IRCTalker(LineOnlyReceiver):
 		log.msg('got USER')
 		house = self.factory.house
 		# <username> <hostname> <servername> <realname>
-		m = re.match(re.compile('([^ ]+) ([^ ]+) ([^ ]+) :(.+)'), s)
+		m = re.match(re.compile('([^ ]+) ([^ ]+) ([^ ]+) :?(.+)'), s)
 		assert m, "can parse %s" % s
 		self.info = dict(
 				username   = m.group(1),
