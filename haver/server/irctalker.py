@@ -151,11 +151,13 @@ class IRCTalker(LineOnlyReceiver):
 			msg = ":haver 353 %s = #%s :%s" % (uname, rname, users)
 			self.sendRaw(msg)
 			self.sendRaw(':haver 366 %s #%s :End of NAMES feed.' % (uname, rname))
-i
+
 	def S_PART(self, rname, uname, *rest):
 		self.sendRaw(':%s!user@haver PART #%s' % (uname, rname))
 
 	def S_IN(self, rname, uname, kind, msg, *rest):
+		if (uname.lower() == self.user.name.lower()):
+			return
 		self.sendRaw(':%s!user@haver PRIVMSG #%s :%s' % (uname, rname, msg))
 	
 	def S_FROM(self, uname, kind, msg, *rest):
@@ -200,7 +202,7 @@ i
 		house = self.factory.house
 		name = names.split(',')[0]
 		pat  = re.compile(":\001ACTION (.+)\001")
-		m    = re.match(pat)
+		m    = re.match(pat, msg)
 		kind = 'say'
 		if m:
 			msg = m.group(1)
