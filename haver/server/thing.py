@@ -15,14 +15,17 @@ class Thing(object):
 		self.__info = dict()
 
 	def __getitem__(self, key):
-		#try:
-		return val(self.__info[key])
-		#except KeyError:
-		#	raise Fail('unknown.infokey', self.namespace, self.name, key)
+		try:
+			return val(self.__info[key])
+		except KeyError:
+			raise Fail('unknown.infokey', self.namespace, self.name, key)
 
 	def __setitem__(self, key, val):
 		self.__info[key] = val
 		return self.__info[key]
+
+	def __str__(self):
+		return "%s:%s" % (self.namespace, self.name)
 
 	def info(self):
 		for (x, y) in self.__info.iteritems():
@@ -43,15 +46,15 @@ class User(Thing):
 		self.idleTime = time.time()
 
 	def sendMsg(self, *msg):
-		self.talker.sendMsg(*msg)
+		if self.talker is not None:
+			self.talker.sendMsg(*msg)
 
 class Room(Thing):
 	namespace = 'room'
-	users = property(lambda self: self.__users.values())
 
 	def __init__(self, name, owner = '&root'):
 		Thing.__init__(self, name)
-		self.__users   = dict()
+		self.users   = set()
 		self['owner']  = owner
 		self['secure'] = 'no'
 
@@ -60,20 +63,16 @@ class Room(Thing):
 			user.sendMsg(*msg)
 
 	def join(self, user, *args):
-		name = user.name.lower()
-		if name in self.__users:
+		if user in self.users:
 			raise Fail('strange.join')
-		self.__users[name] = user
+		self.users.add(user)
+		user.rooms.add(self)
 		self.sendMsg('JOIN', self.name, user.name, *args)
-		user.rooms.add(self.name)
 
 	def part(self, user, *args):
-		name = user.name.lower()
-		if name not in self.__users:
+		if user not in self.users:
 			raise Fail('strange.part')
-		del self.__users[name]
-		args = [self.name, user.name] + list(args)
-		user.sendMsg('PART', *args)
-		self.sendMsg('PART', *args)
-		user.rooms.remove(self.name)
+		self.sendMsg('PART', self.name, user.name, *args)
+		self.users.remove(user)
+		user.rooms.remove(self)
 

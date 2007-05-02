@@ -60,7 +60,8 @@ class HaverTalker(LineOnlyReceiver):
 			self.cmd = cmd
 			self.lastCmd = time.time()
 			try:
-				func  = getattr(self, cmd)
+				method = cmd.replace(':', '_')
+				func  = getattr(self, method)
 				phase = func.phase
 			except AttributeError:
 				raise Fail('unknown.command')
@@ -114,8 +115,7 @@ class HaverTalker(LineOnlyReceiver):
 		house = self.factory.house
 		
 		if self.phase == 'normal':
-			for name in list(self.user.rooms):
-				room = house.lookup('room', name)
+			for room in list(self.user.rooms):
 				if reason is not None:
 					why = "%s: %s" % (why, reason)
 				room.part(self.user, 'quit', why)
