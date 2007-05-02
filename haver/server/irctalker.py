@@ -151,9 +151,15 @@ class IRCTalker(LineOnlyReceiver):
 			msg = ":haver 353 %s = #%s :%s" % (uname, rname, users)
 			self.sendRaw(msg)
 			self.sendRaw(':haver 366 %s #%s :End of NAMES feed.' % (uname, rname))
-
+i
 	def S_PART(self, rname, uname, *rest):
 		self.sendRaw(':%s!user@haver PART #%s' % (uname, rname))
+
+	def S_IN(self, rname, uname, kind, msg, *rest):
+		self.sendRaw(':%s!user@haver PRIVMSG #%s :%s' % (uname, rname, msg))
+	
+	def S_FROM(self, uname, kind, msg, *rest):
+		self.sendRaw(':%s!user@haver PRIVMSG %s :%s' % (uname, uname, msg))
 
 	def irc_init(self):
 		house = self.factory.house
@@ -193,19 +199,18 @@ class IRCTalker(LineOnlyReceiver):
 	def C_PRIVMSG(self, names, msg):
 		house = self.factory.house
 		name = names.split(',')[0]
+		pat  = re.compile(":\001ACTION (.+)\001")
+		m    = re.match(pat)
+		kind = 'say'
+		if m:
+			msg = m.group(1)
+			kind = 'do'
 		if name[0] == '#':
 			room = house.lookup('room', name[1:])
-			pat  = re.compile(":\001ACTION (.+)\001")
-			m    = re.match(pat)
-			kind = 'say'
-			if m:
-				msg = m.group(1)
-				kind = 'do'
 			room.sendMsg('IN', room.name, self.user.name, kind, msg)
 		else:
 			user = house.lookup('user', name)
-			
-			
+			room.sendMsg('FROM', user.name, kind, msg)
 
 	def C_USER(self, user, host, server, real, *rest):
 		log.msg('got USER')
