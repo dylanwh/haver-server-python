@@ -190,6 +190,23 @@ class IRCTalker(LineOnlyReceiver):
 			self.name = name
 			self.irc_init()
 
+	def C_PRIVMSG(self, names, msg):
+		house = self.factory.house
+		name = names.split(',')[0]
+		if name[0] == '#':
+			room = house.lookup('room', name[1:])
+			pat  = re.compile(":\001ACTION (.+)\001")
+			m    = re.match(pat)
+			kind = 'say'
+			if m:
+				msg = m.group(1)
+				kind = 'do'
+			room.sendMsg('IN', room.name, self.user.name, kind, msg)
+		else:
+			user = house.lookup('user', name)
+			
+			
+
 	def C_USER(self, user, host, server, real, *rest):
 		log.msg('got USER')
 		house = self.factory.house
