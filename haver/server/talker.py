@@ -355,4 +355,4 @@ class HaverTalker(LineOnlyReceiver):
 		"""The server will respond to this with a string describing the failure $name.
 		The string will contain shell-style argument variables ($0, $1, etc).
 		$0 should be replaced by the command that triggered the failure, and $1..$n should be replaced by the arguments of it."""
-		self.sendMsg('HELP:FAILURE', name, *self.factory.help.fail(name))
+		self.sendMsg('HELP:FAILURE', name, self.factory.help.fail(name))
