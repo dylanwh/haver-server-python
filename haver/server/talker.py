@@ -244,7 +244,7 @@ class HaverTalker(LineOnlyReceiver):
 			self.tardy = None
 
 	@command('normal')
-	def POKE(self, token):
+	def POKE(self, token="datetime"):
 		"""Hurt the server. Server will respond with OUCH"""
 		self.sendMsg('OUCH', token)
 
