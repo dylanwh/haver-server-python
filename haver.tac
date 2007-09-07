@@ -14,7 +14,7 @@ service      = service.IService(application)
 #proc = service.IProcess(application)
 applicationper = sob.IPersistable(application)
 
-house = House('odin.hardison.net')
+house = House('chat.haverdev.org')
 #ents  = [ Lobby(house), Room('main'), Room('lobby'), Echo(house), Root() ]
 ents  = [ Room('main'), Room('lobby') ]
 for e in ents:
