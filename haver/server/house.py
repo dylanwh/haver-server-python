@@ -34,7 +34,7 @@ class House(set):
 			raise Fail('unknown.thing', ns, name)
 
 	def things(self, ns):
-		return self.things.values()
+		return self.__things.values()
 
 	def genname(self, root = 'random'):
 		users = self.lookup_namespace('user')
