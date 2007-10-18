@@ -17,6 +17,9 @@ class House(set):
 			raise Fail('unknown.thing', ns, name)
 	
 	def add(self, thing):
+		assert hasattr(thing, 'namespace')
+		assert hasattr(thing, 'name')
+
 		ns, name = (thing.namespace, thing.name.lower())
 		things = self.lookup_namespace(ns)
 		if things.has_key(name):
@@ -33,8 +36,8 @@ class House(set):
 		except KeyError:
 			raise Fail('unknown.thing', ns, name)
 
-	def things(self, ns):
-		return self.__things.values()
+	def list(self, ns):
+		return self.__things[ns].values()
 
 	def genname(self, root = 'random'):
 		users = self.lookup_namespace('user')

@@ -290,7 +290,7 @@ class HaverTalker(LineOnlyReceiver):
 	def LIST(self, ns):
 		"""Return a list of things in the namespace $ns"""
 		house = self.factory.house
-		names = [ x.name for x in house.things(ns) ]
+		names = [ x.name for x in house.list(ns) ]
 		self.sendMsg('LIST', ns, *names)
 
 	@command('normal')
