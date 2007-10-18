@@ -288,18 +288,36 @@ class HaverTalker(LineOnlyReceiver):
 	@command('normal')
 	@failure('unknown.namespace')
 	def LIST(self, ns):
-		"""Return a list of things in the namespace $ns"""
-		house = self.factory.house
-		names = [ x.name for x in house.list(ns) ]
-		self.sendMsg('LIST', ns, *names)
+		"""Deprecated."""
+		msg = "".join([
+			"For a list of users, use USERS. for a list of rooms, use ROOMS. ",
+			"For a list of users in a room, try USERSOF<tab>room"
+			])
+		self.sendMsg('FROM', '&father', 'say', msg)
+
 
 	@command('normal')
+	def USERS(self):
+		"""Return a list of users on the server."""
+		house = self.factory.house
+		names = [ x for x in house.lookup_namespace('user') ]
+		self.sendMsg('USERS', *names)
+	
+	@command('normal')
+	def ROOMS(self):
+		"""Return a list of rooms on the server"""
+		house = self.factory.house
+		names = [ x for x in house.lookup_namespace('room') ]
+		self.sendMsg('ROOMS', *names)
+	
+	@command('normal')
 	@failure('invalid.name', 'unknown.thing')
-	def USERS(self, name):
+	def USERSOF(self, name):
+		"""Return a list of users in the channel $name"""
 		house = self.factory.house
 		room = house.lookup('room', name)
 		names = [ x.name for x in room.users ]
-		self.sendMsg('USERS', *names)
+		self.sendMsg('USERSOF', room,  *names)
 
 	@command('normal')
 	@failure('invalid.name', 'unknown.thing')
@@ -349,6 +367,8 @@ class HaverTalker(LineOnlyReceiver):
 		except AttributeError, a:
 			print a
 			raise Fail('unknown.command', cmd)
+
+	HELP = HELP_COMMAND
 
 	@command('normal', 'help')
 	def HELP_FAILURE(self, name):
