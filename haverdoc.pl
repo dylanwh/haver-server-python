@@ -56,6 +56,18 @@ foreach my $cmd (@commands) {
 	}
 }
 
+foreach my $cmd (@commands) {
+	warn "Querying $cmd replies\n";
+	$sock->print("HELP:REPLIES\t$cmd\n");
+	my ($cmd2, $cmd3, @replies) = parse($sock->getline);
+	if ($cmd2 eq 'HELP:REPLIES') {
+		$commands{$cmd3}{REPLIES} = \@replies;
+	} else {
+		die "WTF? $cmd2\n";
+	}
+}
+
+
 my %failures;
 foreach my $fail (@failures) {
 	warn "Querying $fail\n";

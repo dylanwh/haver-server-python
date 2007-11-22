@@ -14,8 +14,8 @@ class Help(object):
 	def __init__(self, talker):
 		self.commands   = list()
 		self.extensions = set()
-		
 		self.failures   = set()
+		self.replies    = dict()
 		self.talker     = talker
 
 		for name in dir(talker):
@@ -28,12 +28,25 @@ class Help(object):
 				if hasattr(func, 'failures'):
 					for x in func.failures:
 						self.failures.add(x)
+				if hasattr(func, 'replies'):
+					for x in func.replies:
+						try:
+							self.replies[name].append(x)
+						except KeyError:
+							self.replies[name] = [x]
 
 	def fail(self, name):
 		try:
 			return FAILS[name]
 		except KeyError:
 			return "undocumented failure: %s" % name
+
+	def reply(self, name):
+		try:
+			replies = self.replies[name]
+			return [ "  ".join(x) for x in replies ]
+		except KeyError:
+			return []
 
 	def command(self, name):
 		"""Return info about a client command"""
@@ -42,16 +55,16 @@ class Help(object):
 		try: exten = cmd.extension
 		except AttributeError: exten = 'core'
 		
-		try: failures = cmd.failures
-		except AttributeError: failures = []
+		try: errors = cmd.errors
+		except AttributeError: errors = []
 		desc = inspect.getdoc(cmd)
 		if desc is None: desc = "<none>"
-		if len(failures) == 0:
-			failures = ['<none>']
+		if len(errors) == 0:
+			errors = ['<none>']
 		return dict(
 			NAME      = cmd.__name__.replace('_', ':'),
 			EXTENSION = exten,
-			FAILURES  = ",".join(failures),
+			FAILURES  = ",".join(errors),
 			DESC      = desc,
 			ARGS      = getargs(cmd)
 		)
