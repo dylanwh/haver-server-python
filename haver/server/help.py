@@ -55,16 +55,16 @@ class Help(object):
 		try: exten = cmd.extension
 		except AttributeError: exten = 'core'
 		
-		try: errors = cmd.errors
-		except AttributeError: errors = []
+		try: failures = cmd.failures
+		except AttributeError: failures = []
 		desc = inspect.getdoc(cmd)
 		if desc is None: desc = "<none>"
-		if len(errors) == 0:
-			errors = ['<none>']
+		if len(failures) == 0:
+			failures = ['<none>']
 		return dict(
 			NAME      = cmd.__name__.replace('_', ':'),
 			EXTENSION = exten,
-			FAILURES  = ",".join(errors),
+			FAILURES  = ",".join(failures),
 			DESC      = desc,
 			ARGS      = getargs(cmd)
 		)

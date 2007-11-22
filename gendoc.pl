@@ -13,6 +13,10 @@ foreach my $cmd (sort keys %{ $data{commands} }) {
 	print "   $data{commands}{$cmd}{DESC}\n";
 	print "   Extension: $data{commands}{$cmd}{EXTENSION}\n";
 	print "   Possible FAILs: ", join(', ', @{ $data{commands}{$cmd}{FAILURES} }), "\n";
+	print "   Possible replies:\n";
+	foreach my $reply (@{ $data{commands}{$cmd}{REPLIES} }) {
+		print "      $reply\n";
+	}
 	print "\n";
 }
 
