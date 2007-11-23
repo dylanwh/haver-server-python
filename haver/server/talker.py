@@ -193,7 +193,7 @@ class HaverTalker(LineOnlyReceiver):
 	@failures('reserved.name', 'invalid.name', 'existing.thing')
 	@reply('HELLO', 'name', 'address')
 	def IDENT(self, name):
-		"""Request user name."""
+		"""Associate a client connection with name {name}. May not be used after the server sends HELLO."""
 		house = self.factory.house
 		assert_name(name)
 		assert_name_unreserved(name)
@@ -295,7 +295,7 @@ class HaverTalker(LineOnlyReceiver):
 	@failures('invalid.name', 'existing.thing', 'reserved.name')
 	@reply('OPEN', 'name')
 	def OPEN(self, name):
-		"""Create a new room"""
+		"""Create a new room. This command may be restricted to server-admins only."""
 		assert_name(name)
 		assert_name_unreserved(name)
 
@@ -308,7 +308,7 @@ class HaverTalker(LineOnlyReceiver):
 	@failures('invalid.name', 'unknown.thing', 'access.owner')
 	@reply('CLOSE', 'name')
 	def CLOSE(self, name):
-		"""Destroy a room."""
+		"""Destroy a room. Only the owner can do this."""
 		assert_name(name)
 		assert_name_unreserved(name)
 
@@ -324,6 +324,7 @@ class HaverTalker(LineOnlyReceiver):
 
 	@normal
 	@failures('unknown.namespace', 'unknown.thing')
+	@reply('INFO', 'ns', 'name', 'key', 'value', '...')
 	def INFO(self, ns, name):
 		"""DEPRECATED. Get a listing of information for a particular thing."""
 		house = self.factory.house
@@ -334,27 +335,19 @@ class HaverTalker(LineOnlyReceiver):
 	@failures('unknown.room')
 	@reply('ROOMINFO', 'name', 'key', 'value', '...')
 	def ROOMINFO(self, name):
+		"""Query metadata about a user"""
 		house = self.factory.house
 		room = house.lookup("room", name)
 		self.sendMsg('ROOMINFO', name, *room.info())
 
 	@normal
 	@failures('unknown.user')
-	@reply('ROOMINFO', 'name', 'key', 'value', '...')
+	@reply('USERINFO', 'name', 'key', 'value', '...')
 	def USERINFO(self, name):
+		"""Query metadata about a user"""
 		house = self.factory.house
 		user = house.lookup("user", name)
 		self.sendMsg('USERINFO', name, *user.info())
-
-	@normal
-	def LIST(self, ns):
-		"""Deprecated."""
-		msg = "".join([
-			"For a list of users, use USERS. for a list of rooms, use ROOMS. ",
-			"For a list of users in a room, try USERSOF<tab>room"
-			])
-		self.sendMsg('FROM', '&father', 'say', msg)
-
 
 	@normal
 	@reply('USERS', 'names...')

@@ -8,13 +8,14 @@ FAILS = {
 	'arity': "$0 has an arity of $1 but was passed $2 arguments.",
 	'reserved.name': "The name $1 is reserved by the server",
 	'already.attached': "The user is already attached",
+	'strange.command': "Command from phase $2 sent while server expecting commands from phase $1",
 }
 
 class Help(object):
 	def __init__(self, talker):
 		self.commands   = list()
 		self.extensions = set()
-		self.failures   = set()
+		self.failures   = set(['strange.command'])
 		self.replies    = dict()
 		self.talker     = talker
 
