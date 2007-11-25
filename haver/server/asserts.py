@@ -29,6 +29,8 @@ def assert_arity(f, args):
 		arity_min = arity_max - len(f.func_defaults)
 		arity_text = "%d-%d" % (arity_min, arity_max)
 
+	if f.func_code.co_flags & 4:
+		arity_max = 1000000
 	catchall = lambda x: inspect.getargspec(x)[2] is None
 
 	if (len(args) > arity_max and catchall(f)) or len(args) < arity_min:

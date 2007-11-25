@@ -26,6 +26,11 @@ def normal(func):
 	func.phase = 'normal'
 	return func
 
+def magical(func):
+	func.phase = 'magical'
+	return func
+
+
 def noreply(func):
 	func.noreply = True
 	return func
@@ -90,6 +95,7 @@ class HaverTalker(LineOnlyReceiver):
 		try:
 			cmd, args = haver.protocol.parse( line.rstrip("\r") )
 			self.cmd = cmd
+			self.tag = None
 			self.lastCmd = time.time()
 			try:
 				method = cmd.replace(':', '_')
@@ -98,13 +104,16 @@ class HaverTalker(LineOnlyReceiver):
 			except AttributeError:
 				raise Fail('unknown.command')
 			
-			if phase != self.phase:
+			if phase != self.phase and phase != 'magical':
 				raise Fail('strange.command', self.phase, phase)
 
 			assert_cmd(cmd)
 			assert_arity(func, args)
 
-			newphase = func(*args)
+			try:
+				newphase = func(*args)
+			finally:
+				self.tag = None
 			if newphase is not None:
 				self.phase = newphase
 		
@@ -123,6 +132,9 @@ class HaverTalker(LineOnlyReceiver):
 			self.disconnect('bork')
 
 	def sendMsg(self, cmd, *args):
+		if self.tag is not None:
+			args = (self.tag, cmd) + args
+			cmd = 'TAG'
 		self.sendLine(haver.protocol.deparse(cmd, args) + "\r")
 	
 	def connectionMade(self):
@@ -406,6 +418,27 @@ class HaverTalker(LineOnlyReceiver):
 	def HELP_COMMANDS(self):
 		commands = [ x.replace('_', ':') for x in help.commands ]
 		self.sendMsg('HELP:COMMANDS', *commands)
+
+	@magical
+	@ext('tag')
+	def TAG(self, tag, cmd, *args):
+		"""ehird's tagging thing"""
+		self.tag = tag
+		self.cmd = cmd
+		try:
+			method = cmd.replace(':', '_')
+			func  = getattr(self, method)
+			phase = func.phase
+		except AttributeError:
+			raise Fail('unknown.command')
+		
+		if phase != self.phase:
+			raise Fail('strange.command', self.phase, phase)
+
+		assert_cmd(cmd)
+		assert_arity(func, args)
+		return func(*args)
+
 
 	@normal
 	@ext('help')
