@@ -93,43 +93,43 @@ class HaverTalker(LineOnlyReceiver):
 
 	def lineReceived(self, line):
 		try:
-			cmd, args = haver.protocol.parse( line.rstrip("\r") )
-			self.cmd = cmd
-			self.tag = None
-			self.lastCmd = time.time()
 			try:
-				method = cmd.replace(':', '_')
-				func  = getattr(self, method)
-				phase = func.phase
-			except AttributeError:
-				raise Fail('unknown.command')
-			
-			if phase != self.phase and phase != 'magical':
-				raise Fail('strange.command', self.phase, phase)
-
-			assert_cmd(cmd)
-			assert_arity(func, args)
-
-			try:
-				newphase = func(*args)
-			finally:
+				cmd, args = haver.protocol.parse( line.rstrip("\r") )
+				self.cmd = cmd
 				self.tag = None
-			if newphase is not None:
-				self.phase = newphase
-		
-		except Fail, failure:
-			log.msg('Command %s failed with failure %s (%s)' % (self.cmd, failure.name, str(failure.args)))
-			if self.phase != 'connect':
-				self.sendMsg('FAIL', self.cmd, failure.name, *failure.args)
-			else:
-				self.transport.loseConnection()
+				self.lastCmd = time.time()
+				try:
+					method = cmd.replace(':', '_')
+					func  = getattr(self, method)
+					phase = func.phase
+				except AttributeError:
+					raise Fail('unknown.command')
+				
+				if phase != self.phase and phase != 'magical':
+					raise Fail('strange.command', self.phase, phase)
 
-		except Bork, bork:
-			log.msg('Borking client: %s' % bork.msg)
-			if self.phase != 'connect':
-				self.phase = 'bork'
-				self.sendMsg('BORK', bork.msg)
-			self.disconnect('bork')
+				assert_cmd(cmd)
+				assert_arity(func, args)
+
+				newphase = func(*args)
+				if newphase is not None:
+					self.phase = newphase
+			
+			except Fail, failure:
+				log.msg('Command %s failed with failure %s (%s)' % (self.cmd, failure.name, str(failure.args)))
+				if self.phase != 'connect':
+					self.sendMsg('FAIL', self.cmd, failure.name, *failure.args)
+				else:
+					self.transport.loseConnection()
+
+			except Bork, bork:
+				log.msg('Borking client: %s' % bork.msg)
+				if self.phase != 'connect':
+					self.phase = 'bork'
+					self.sendMsg('BORK', bork.msg)
+				self.disconnect('bork')
+		finally:
+			self.tag = None
 
 	def sendMsg(self, cmd, *args):
 		if self.tag is not None:
