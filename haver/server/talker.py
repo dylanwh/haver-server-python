@@ -91,30 +91,32 @@ class HaverTalker(LineOnlyReceiver):
 		self.pingLoop  = task.LoopingCall(self.checkPing)
 		self.pingLoop.start(self.pingTime)
 
+	def invoke(self, cmd, args):
+		self.cmd = cmd
+		self.lastCmd = time.time()
+		try:
+			method = cmd.replace(':', '_')
+			func  = getattr(self, method)
+			phase = func.phase
+		except AttributeError:
+			raise Fail('unknown.command')
+		
+		if phase != self.phase and phase != 'magical':
+			raise Fail('strange.command', self.phase, phase)
+
+		assert_cmd(cmd)
+		assert_arity(func, args)
+
+		newphase = func(*args)
+		if newphase is not None:
+			self.phase = newphase
+
 	def lineReceived(self, line):
 		try:
 			try:
 				cmd, args = haver.protocol.parse( line.rstrip("\r") )
-				self.cmd = cmd
 				self.tag = None
-				self.lastCmd = time.time()
-				try:
-					method = cmd.replace(':', '_')
-					func  = getattr(self, method)
-					phase = func.phase
-				except AttributeError:
-					raise Fail('unknown.command')
-				
-				if phase != self.phase and phase != 'magical':
-					raise Fail('strange.command', self.phase, phase)
-
-				assert_cmd(cmd)
-				assert_arity(func, args)
-
-				newphase = func(*args)
-				if newphase is not None:
-					self.phase = newphase
-			
+				self.invoke(cmd, args)
 			except Fail, failure:
 				log.msg('Command %s failed with failure %s (%s)' % (self.cmd, failure.name, str(failure.args)))
 				if self.phase != 'connect':
@@ -424,21 +426,7 @@ class HaverTalker(LineOnlyReceiver):
 	def TAG(self, tag, cmd, *args):
 		"""ehird's tagging thing"""
 		self.tag = tag
-		self.cmd = cmd
-		try:
-			method = cmd.replace(':', '_')
-			func  = getattr(self, method)
-			phase = func.phase
-		except AttributeError:
-			raise Fail('unknown.command')
-		
-		if phase != self.phase:
-			raise Fail('strange.command', self.phase, phase)
-
-		assert_cmd(cmd)
-		assert_arity(func, args)
-		return func(*args)
-
+		self.invoke(cmd, args)
 
 	@normal
 	@ext('help')
