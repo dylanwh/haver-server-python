@@ -114,7 +114,7 @@ class HaverTalker(LineOnlyReceiver):
 	def lineReceived(self, line):
 		try:
 			try:
-				cmd, args = haver.protocol.parse( line.rstrip("\r") )
+				cmd, args = haver.protocol.parse( line )
 				self.tag = None
 				self.invoke(cmd, args)
 			except Fail, failure:
@@ -137,7 +137,7 @@ class HaverTalker(LineOnlyReceiver):
 		if self.tag is not None:
 			args = (self.tag, cmd) + args
 			cmd = 'TAG'
-		self.sendLine(haver.protocol.deparse(cmd, args) + "\r")
+		self.sendLine(haver.protocol.deparse(cmd, args))
 	
 	def connectionMade(self):
 		self.phase = 'connect'
